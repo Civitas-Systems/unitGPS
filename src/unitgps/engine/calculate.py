@@ -71,7 +71,7 @@ def calculate_conversion_factor(
     parallel option was used.
     """
     if not shortest_paths_edges:
-        return None
+        return []
 
     # Allow either a single path (list[tuple]) or many paths (list[list[tuple]])
     paths_to_process: List[List[Tuple[str, str]]] = list(shortest_paths_edges)

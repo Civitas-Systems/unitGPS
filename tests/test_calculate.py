@@ -206,3 +206,13 @@ def test_edge_picks_threaded_through_determine_conversion(graph, empty_search_pa
     )
     assert res2["status"] == "success"
     assert res2["data"][0]["conversion_factor"] == legacy_factor
+
+
+def test_empty_input_returns_empty_list() -> None:
+    """Empty or None path input returns [] (not None) so callers can iterate
+    over the result uniformly."""
+    import networkx as nx
+
+    G = nx.MultiDiGraph()
+    assert calculate_conversion_factor(G, []) == []
+    assert calculate_conversion_factor(G, None) == []

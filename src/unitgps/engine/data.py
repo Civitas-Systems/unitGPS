@@ -40,6 +40,10 @@ class DataLoader:
         # Create reciprocals for non-unit-conversions
         sets_to_exclude = ["Unit Conversion", "Magnitude Adjustment", "Unit Conversions"]
         reciprocal = data[~data["Set"].isin(sets_to_exclude)].copy()
+        # Guard against divide-by-zero when inverting: a 0-valued
+        # measurement has no meaningful reciprocal (1 / 0 -> inf would
+        # corrupt the graph), so drop those rows. The forward edge is kept.
+        reciprocal = reciprocal[reciprocal["Value"] != 0].copy()
 
         new_column_names: dict[str, str] = {}
         for col in reciprocal.columns:
