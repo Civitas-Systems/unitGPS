@@ -1,0 +1,42 @@
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Notebook artifacts
+.ipynb_checkpoints/
+
+# Local debug / scratch
+scratch/
+*.log
+
+# Large build artifacts / archives — exceed GitHub's 100MB file limit.
+# (dist/ and build/ are already ignored above; this covers the zipped bundle.)
+*.zip
+dist.zip
+
+# Stray pytest temp dirs
+pytest-cache-files-*/

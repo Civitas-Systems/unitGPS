@@ -1,0 +1,5 @@
+# Standalone desktop variant — option A is pywebview wrapping the Streamlit app
+# into a native window; option B (commented) is PyQt for a fully native UI.
+-r streamlit.txt
+pywebview>=4.4
+# PyQt6>=6.6  # uncomment for native-widget path

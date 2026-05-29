@@ -1,0 +1,6 @@
+# Engine-only dependencies — needed by every UI variant.
+# Mirror these in pyproject.toml [project].dependencies so editable installs work.
+pandas>=2.0
+networkx>=3.0
+openpyxl>=3.1
+pyarrow>=14.0

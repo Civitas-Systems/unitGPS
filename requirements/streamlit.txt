@@ -1,0 +1,5 @@
+# Streamlit variant — installs core + UI deps.
+-r core.txt
+streamlit>=1.30
+plotly>=5.18
+matplotlib>=3.7
