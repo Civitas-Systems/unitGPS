@@ -164,6 +164,9 @@ def inject_css(theme: dict) -> None:
     st.markdown(
         f"""
 <style>
+    /* Web fonts must be imported before any other rule, or the browser
+       silently ignores the @import and falls back to system fonts. */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code&display=swap');
     /* Responsive layout constraints */
     /* Width cap — doubled-attribute trick boosts specificity above Streamlit's
        own emotion-generated rules so we win in both wide and centered modes. */
@@ -179,7 +182,6 @@ def inject_css(theme: dict) -> None:
         padding-left: 1.25rem !important;
         padding-right: 1.25rem !important;
     }}
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code&display=swap');
 
     /* Compact widget labels — tighter than Streamlit's defaults so forms feel less like forms. */
     .stSelectbox label, .stMultiSelect label,
@@ -398,68 +400,6 @@ def inject_css(theme: dict) -> None:
         color: {th['text']} !important;
     }}
 
-    /* GHG Summary Table */
-    .ghg-summary-table {{
-        width: auto !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-        border-collapse: collapse !important;
-        margin-top: 15px !important;
-        margin-bottom: 15px !important;
-        border-radius: 8px !important;
-        overflow: hidden !important;
-        border: 1px solid {th['border']} !important;
-        background-color: {th['surface']} !important;
-    }}
-    .ghg-summary-table th {{
-        background-color: {th['surface']} !important;
-        color: {th['text']} !important;
-        font-weight: 600 !important;
-        text-align: left !important;
-        padding: 8px 12px !important;
-        border-bottom: 2px solid {th['border']} !important;
-        font-size: 0.9rem !important;
-    }}
-    .ghg-summary-table td {{
-        padding: 8px 12px !important;
-        border-bottom: 1px solid {th['border']} !important;
-        color: {th['text']} !important;
-        font-size: 0.875rem !important;
-    }}
-    .ghg-summary-table tr:last-child td {{
-        border-bottom: none !important;
-    }}
-    .ghg-summary-table tr:hover {{
-        background-color: rgba(255, 255, 255, 0.03) !important;
-    }}
-    .ghg-badge {{
-        display: inline-block !important;
-        padding: 2px 8px !important;
-        border-radius: 4px !important;
-        font-weight: 600 !important;
-        font-size: 0.75rem !important;
-        text-transform: uppercase !important;
-        text-align: center !important;
-    }}
-    span.ghg-badge-co2 {{
-        background-color: rgba(103, 80, 164, 0.15) !important;
-        color: {th['primary']} !important;
-        -webkit-text-fill-color: {th['primary']} !important;
-        border: 1px solid {th['primary']} !important;
-    }}
-    span.ghg-badge-ch4 {{
-        background-color: rgba(16, 185, 129, 0.15) !important;
-        color: {th['success']} !important;
-        -webkit-text-fill-color: {th['success']} !important;
-        border: 1px solid {th['success']} !important;
-    }}
-    span.ghg-badge-n2o {{
-        background-color: rgba(239, 68, 68, 0.15) !important;
-        color: {th['danger']} !important;
-        -webkit-text-fill-color: {th['danger']} !important;
-        border: 1px solid {th['danger']} !important;
-    }}
-
     [data-testid="stVerticalBlockBorderWrapper"] {{
         background: {th['surface']};
         border: {th['border_width']} solid {th['border']};
@@ -593,22 +533,6 @@ def inject_css(theme: dict) -> None:
         text-transform: uppercase;
         color: {th['secondary']} !important;
         font-weight: 700;
-    }}
-    .audit-step {{
-        background: {th['bg']};
-        border-left: 4px solid {th['primary']};
-        padding: 12px 16px;
-        margin-bottom: 8px;
-        border-radius: {th['radius']};
-        font-size: 0.9rem;
-    }}
-    .badge {{
-        background: {th['surface']};
-        color: {th['primary']} !important;
-        padding: 2px 6px;
-        border-radius: {th['input_radius']};
-        font-family: monospace;
-        border: 1px solid {th['border']};
     }}
 </style>
 """,
