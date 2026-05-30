@@ -163,3 +163,20 @@ For readers coming from the [[../v0.4-Antigravity|v0.4-Antigravity]] generation,
 - **edge_picks** parameter on `calculate_conversion_factor` / `determine_conversion` / `determine_ghg_emissions` — sticky user choice for ambiguous parallel edges
 
 The rewrite also collapsed the GHG panel from 5 stacked blocks (total + equation + table + donut + 3 per-gas sections) to 3 (total + horizontal stacked bar + 3 compact gas cards), and switched the audit body to a two-column Classification + Chemical layout with a single elegant attribution footer.
+
+## 2026-05-30 additions & changes
+
+**New top-level docs**
+- [[METHODOLOGY]] — rigorous methods writeup: graph model, conversion math, GHG accounting, data sources, validation, **assumptions & limitations**.
+- [[Roadmap to world-class]] — the engine-level gaps (uncertainty propagation, principled ambiguity policy, data-quality metadata) for a future awake design pass.
+- [[QA_NOTES]] — how answers are validated (internal + independent external checks) and findings. **See finding F1: AR6 CH4 = 27.9 vs IPCC 29.8/27.0.**
+- `DEPLOYMENT.md` (repo root) — Streamlit Community Cloud deploy guide.
+
+**New reference / concept pages**
+- [[Pathway-scoped filters]], [[shortest_path_edges]], [[shortest_paths_via_edge_set]].
+
+**Changed (see [[CHANGELOG]] Passes 8–11)**
+- The experimental pathway **Sankey was removed**; pages mentioning `render_pathway_sankey` are superseded. Network labels are now theme-aware.
+- Filter **tabs → inline segmented control** (`render_filter_group`, `get_active_filter_groups`).
+- One filter rule (infra-always / blank-excludes / blank-year-wildcard) replaced the old multi-rule logic in [[UnitGraph.filter_graph]].
+- GHG result panel: transparent **Mass × GWP = CO₂e** table; LaTeX derivation removed as redundant.

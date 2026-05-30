@@ -79,3 +79,24 @@ def test_filter_graph_blank_year_is_wildcard(graph) -> None:
     F = graph.filter_graph(params, include_emission_factors=False)
     sets_seen = {d.get("Set") for _, _, d in F.edges(data=True)}
     assert "Unit Conversion" in sets_seen, "blank-year infrastructure was dropped by a year filter"
+
+
+def test_filter_recent_global_mode(graph) -> None:
+    F = graph.filter_graph({"Data Year": {"mode": "recent_global", "values": []}},
+                           include_emission_factors=True)
+    assert F.number_of_edges() > 0
+
+
+def test_filter_recent_edge_mode(graph) -> None:
+    F = graph.filter_graph({"Data Year": {"mode": "recent_edge", "values": []}},
+                           include_emission_factors=True)
+    assert F.number_of_edges() > 0
+
+
+def test_filter_range_mode(graph) -> None:
+    F = graph.filter_graph({"Data Year": {"mode": "range", "values": [2010.0, 2024.0]}},
+                           include_emission_factors=True)
+    assert F.number_of_edges() > 0
+    # infrastructure (no Data Year) survives a range filter as a wildcard
+    sets = {d.get("Set") for _, _, d in F.edges(data=True)}
+    assert "Unit Conversion" in sets

@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: UnitGPS
+message: "If you use UnitGPS in academic work, please cite it."
+type: software
+authors:
+  - family-names: Zelinka
+    given-names: Dave
+repository-code: "https://github.com/DaveLZelinka/UnitGPS"
+abstract: >-
+  Graph-based universal unit converter and greenhouse-gas emissions calculator.
+  Units are nodes and conversions are directed edges; emissions route each gas
+  through an emission factor and weight by IPCC GWP, with a full audit trail for
+  every result. Validated against NIST, IPCC (AR4/AR5/AR6) and EPA reference values.
+keywords:
+  - unit conversion
+  - greenhouse gas
+  - emissions
+  - global warming potential
+  - graph
+  - emission factors
+license: LicenseRef-Proprietary
+version: "0.5"
+date-released: "2026-05-30"

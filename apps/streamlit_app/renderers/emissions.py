@@ -573,43 +573,6 @@ def render_emissions_panel(
                     use_container_width=True,
                 )
 
-            # ── LaTeX derivation (hidden behind expander) ──
-            def tex_val(v):
-                if v is None:
-                    return r"\text{N/A}"
-                return format_latex_num(v)
-
-            co2_m = tex_val(res["results"]["CO2"]["Mass"])
-            ch4_m = tex_val(res["results"]["CH4"]["Mass"])
-            n2o_m = tex_val(res["results"]["N2O"]["Mass"])
-            co2_c = tex_val(res["results"]["CO2"]["CO2e"])
-            ch4_c = tex_val(res["results"]["CH4"]["CO2e"])
-            n2o_c = tex_val(res["results"]["N2O"]["CO2e"])
-            tot_c = tex_val(total_co2e)
-            ch4_g = _gwp_text(res["results"]["CH4"]["GWP"])
-            n2o_g = _gwp_text(res["results"]["N2O"]["GWP"])
-            u_tex = sanitize_latex(target_unit)
-            co2_t = GAS_LATEX["CO2"]
-            ch4_t = GAS_LATEX["CH4"]
-            n2o_t = GAS_LATEX["N2O"]
-
-            latex_eq = (
-                r"\small"
-                r"\begin{aligned}"
-                rf"\text{{Total }}{co2_t}\text{{e}} &= "
-                rf"{co2_t} + {ch4_t} \cdot \text{{GWP}}_{{{ch4_t}}}"
-                rf" + {n2o_t} \cdot \text{{GWP}}_{{{n2o_t}}} \\"
-                rf"&= {co2_m} + {ch4_m} \cdot {ch4_g} + {n2o_m} \cdot {n2o_g}"
-                rf" \quad \left[ {u_tex} \right] \\"
-                rf"&= {co2_c} + {ch4_c} + {n2o_c}"
-                rf" \quad \left[ {u_tex}\,{co2_t}\text{{e}} \right] \\"
-                rf"&= {tot_c} \quad \left[ {u_tex}\,{co2_t}\text{{e}} \right]"
-                r"\end{aligned}"
-            )
-
-            with st.expander("Show derivation", expanded=False):
-                st.latex(latex_eq)
-
             # ── Transparent calculation: Mass × GWP = CO₂e, gases side by side ──
             st.markdown(
                 f"<div style='font-size:0.7rem; color:{theme['secondary']} !important; "
