@@ -8,7 +8,6 @@ import networkx as nx
 import pandas as pd
 import streamlit as st
 
-from unitgps.engine import shortest_path_edges
 
 # --------------------------------------------------------------------------- #
 # Constants                                                                    #
@@ -51,59 +50,50 @@ def apply_db_and_temporal_filters(
     dy_vals: Iterable | None = None,
     exempt_static_conversions: bool = True,
 ) -> pd.DataFrame:
-    """Apply database column filters + temporal (Data Year) filters to a DataFrame."""
-    is_unit_conv = df["Set"].isin(["Unit Conversion", "Magnitude Adjustment", "Unit Conversions"])
-    is_chem_prop = df["Set"] == "Chemical Properties"
+    """Apply database column + temporal (Data Year) filters to a DataFrame.
 
-    mask = pd.Series(True, index=df.index)
-
+    Infrastructure rows (unit conversions, magnitude adjustments) always pass -
+    they have no provenance and are needed to chain multi-step paths. Every
+    other row must match each selected filter; a blank scope value excludes it
+    (picking an electricity-only column like eGRID drops fuel rows). Data Year
+    treats a blank year as a wildcard. ``exempt_static_conversions`` is retained
+    for call-site compatibility.
+    """
+    infra = df["Set"].isin(["Unit Conversion", "Magnitude Adjustment", "Unit Conversions"])
+    ok = pd.Series(True, index=df.index)
     for col, search_val in search_params.items():
-        if not search_val:
+        if not search_val or col not in df.columns:
             continue
-
-        if exempt_static_conversions:
-            cond_unit_conv = is_unit_conv
-        else:
-            cond_unit_conv = is_unit_conv & df[col].isin(search_val)
-
-        if col not in [
-            "Source-Chemical Category",
-            "Source-Chemical Type",
-            "Chemical1",
-            "Chemical2",
-            "Property",
-        ]:
-            cond_chem_prop = is_chem_prop
-        else:
-            cond_chem_prop = is_chem_prop & df[col].isin(search_val)
-
-        cond_others = (~is_unit_conv) & (~is_chem_prop) & df[col].isin(search_val)
-        mask = mask & (cond_unit_conv | cond_chem_prop | cond_others)
-
-    has_no_year = df["Data Year"].isna()
-
-    cond_temp_exempt = is_unit_conv if exempt_static_conversions else pd.Series(False, index=df.index)
-
-    if mode == "Specific Years" and dy_vals:
-        float_years = [float(v) for v in dy_vals]
-        mask = mask & (cond_temp_exempt | has_no_year | df["Data Year"].isin(float_years))
-    elif mode == "Range" and start_yr is not None and end_yr is not None:
-        mask = mask & (
-            cond_temp_exempt
-            | has_no_year
-            | ((df["Data Year"] >= start_yr) & (df["Data Year"] <= end_yr))
-        )
-
-    return df[mask]
+        ok = ok & df[col].isin(search_val)
+    if "Data Year" in df.columns:
+        has_no_year = df["Data Year"].isna()
+        if mode == "Specific Years" and dy_vals:
+            yrs = [float(v) for v in dy_vals]
+            ok = ok & (has_no_year | df["Data Year"].isin(yrs))
+        elif mode == "Range" and start_yr is not None and end_yr is not None:
+            ok = ok & (has_no_year | ((df["Data Year"] >= start_yr) & (df["Data Year"] <= end_yr)))
+    return df[infra | ok]
 
 
-def _reduced_pathway_graph(df: pd.DataFrame) -> "nx.DiGraph":
-    """Simple DiGraph of Denominator->Numerator unit pairs (parallel edges
-    merged) — small enough that shortest-path reachability is two cheap BFS."""
+def _dimension_reach(graph_df, node_attrs, source_dim, target_dim):
+    """``(fwd, rev)``: dimensions reachable FROM ``source_dim`` and dimensions
+    that can REACH ``target_dim``, on the dimension-reduced graph (units
+    collapsed to their Unit Dimension, parallel edges merged). ``None`` when
+    there is no source->target dimensional path.
+    """
+    dim_of = lambda u: node_attrs.get(u, {}).get("Unit Dimension")
     g = nx.DiGraph()
-    pairs = df[["Denominator", "Numerator"]].dropna()
-    g.add_edges_from(set(map(tuple, pairs.itertuples(index=False, name=None))))
-    return g
+    for a, b in graph_df[["Denominator", "Numerator"]].dropna().itertuples(index=False, name=None):
+        da, db = dim_of(a), dim_of(b)
+        if da and db:
+            g.add_edge(da, db)
+    if source_dim not in g or target_dim not in g:
+        return None
+    fwd = set(nx.single_source_shortest_path_length(g, source_dim))
+    if target_dim not in fwd:
+        return None
+    rev = set(nx.single_source_shortest_path_length(g.reverse(copy=False), target_dim))
+    return fwd, rev
 
 
 def apply_pathway_scope(
@@ -111,25 +101,32 @@ def apply_pathway_scope(
     graph_df: pd.DataFrame,
     source_unit: str | None,
     target_unit: str | None,
+    node_attrs: dict,
 ) -> pd.DataFrame:
-    """Narrow ``df_to_scope`` to rows that are edges on a SHORTEST source->target
-    conversion path, so the filter panel only offers pathway-relevant values
-    (an electricity MWh->kg pathway hides coal/fuel chemical types).
+    """Narrow ``df_to_scope`` to rows on the source->target *dimensional* pathway.
 
-    The reachability graph is built from ``graph_df`` (module-filtered data,
-    independent of the user's db-filter picks) so selecting a filter can't break
-    reachability. Falls back to ``df_to_scope`` unchanged when source/target are
-    unset, identical, missing, or unreachable, so the panel never blanks by
-    surprise.
+    Scoping is by **dimension**, not by individual unit: keep a row
+    (Denominator->Numerator edge) when its source dimension is reachable from
+    the source unit's dimension AND its target dimension can reach the target
+    unit's dimension. So every unit of an on-pathway dimension is offered — an
+    electricity (MWh) emission factor stays available when the source is J,
+    because both are Energy and J can reach any energy unit. Falls back to the
+    full frame when source/target are unset, identical, dimensionless, or
+    unreachable, so the panel never blanks by surprise.
     """
+    dim_of = lambda u: node_attrs.get(u, {}).get("Unit Dimension")
     if not source_unit or not target_unit or source_unit == target_unit:
         return df_to_scope
-    edges = shortest_path_edges(_reduced_pathway_graph(graph_df), source_unit, target_unit)
-    if not edges:
+    sdim, tdim = dim_of(source_unit), dim_of(target_unit)
+    if not sdim or not tdim:
         return df_to_scope
+    reach = _dimension_reach(graph_df, node_attrs, sdim, tdim)
+    if reach is None:
+        return df_to_scope
+    fwd, rev = reach
     keep = [
-        (d, n) in edges
-        for d, n in zip(df_to_scope["Denominator"], df_to_scope["Numerator"])
+        (dim_of(a) in fwd and dim_of(b) in rev)
+        for a, b in zip(df_to_scope["Denominator"], df_to_scope["Numerator"])
     ]
     return df_to_scope[keep]
 

@@ -37,8 +37,11 @@ class UnitGraph:
     ) -> nx.MultiDiGraph:
         """Return a filtered subgraph based on search parameters.
 
-        Unit Conversions and Magnitude Adjustments are always included.
-        Chemical Properties edges ignore non-chemical filters.
+        Infrastructure (Unit Conversions, Magnitude Adjustments) always passes -
+        it has no provenance and is needed to chain any multi-step path. Every
+        other row must match each selected filter; a blank scope value is
+        excluded (so an electricity-only column like eGRID drops fuel rows).
+        Data Year treats a blank year as a wildcard.
 
         ``search_parameters['Data Year']`` may be:
           - a list (treated as ``mode='exact'``);
@@ -70,44 +73,34 @@ class UnitGraph:
             if not include_emission_factors and is_emission_factor:
                 continue
 
-            is_unit_conversion = attributes.get("Set") in [
+            # Infrastructure always passes; every other row must match each
+            # selected filter. A blank scope value therefore EXCLUDES the row
+            # (e.g. picking an eGRID region drops fuel rows, which are blank in
+            # the eGRID column). Data Year is handled below and still wildcards
+            # a blank year.
+            is_infrastructure = attributes.get("Set") in (
                 "Unit Conversion",
                 "Magnitude Adjustment",
                 "Unit Conversions",
-            ]
-            is_chemical_property = attributes.get("Set") == "Chemical Properties"
-
-            # Check all search parameters (except Data Year)
+            )
             match_found = True
-            for param, search_val in search_parameters.items():
-                if param == "Data Year" or search_val is None:
-                    continue
-
-                # Chemical-property edges ignore non-chemical filters
-                if is_chemical_property and param not in [
-                    "Source-Chemical Category",
-                    "Source-Chemical Type",
-                    "Chemical1",
-                    "Chemical2",
-                    "Property",
-                ]:
-                    continue
-
-                data_val = attributes.get(param)
-
-                if isinstance(search_val, list):
-                    if data_val not in search_val:
-                        match_found = False
-                        break
-                else:
-                    if search_val != data_val:
+            if not is_infrastructure:
+                for param, search_val in search_parameters.items():
+                    if param == "Data Year" or search_val is None:
+                        continue
+                    data_val = attributes.get(param)
+                    if isinstance(search_val, list):
+                        if data_val not in search_val:
+                            match_found = False
+                            break
+                    elif search_val != data_val:
                         match_found = False
                         break
 
-            if not match_found and not is_unit_conversion:
+            if not match_found:
                 continue
 
-            # Handle Data Year (Pass 1)
+            # Data Year - a blank year is a wildcard, same as above.
             edge_year = attributes.get("Data Year")
             try:
                 edge_year_val = (
@@ -119,17 +112,11 @@ class UnitGraph:
                 edge_year_val = None
 
             if dy_mode == "exact" and dy_values:
-                if (
-                    not is_unit_conversion
-                    and edge_year_val not in dy_values
-                    and edge_year_val is not None
-                ):
+                if edge_year_val is not None and edge_year_val not in dy_values:
                     continue
             elif dy_mode == "range" and len(dy_values) == 2:
-                if (
-                    not is_unit_conversion
-                    and edge_year_val is not None
-                    and not (dy_values[0] <= edge_year_val <= dy_values[1])
+                if edge_year_val is not None and not (
+                    dy_values[0] <= edge_year_val <= dy_values[1]
                 ):
                     continue
 

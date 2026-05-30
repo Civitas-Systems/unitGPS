@@ -467,7 +467,7 @@ with st.container():
     # filter values on a shortest conversion path (electricity MWh->kg hides
     # coal/fuel chemical types). df_modules keeps reachability independent of
     # db-filter picks; falls back to unscoped when there's no path.
-    df_for_filters = apply_pathway_scope(df_for_units, df_modules, source_unit, target_unit)
+    df_for_filters = apply_pathway_scope(df_for_units, df_modules, source_unit, target_unit, node_attrs)
     render_filter_tabs(df_for_filters, theme, do_ghg=do_ghg)
 
 # --------------------------------------------------------------------------- #
