@@ -60,3 +60,24 @@ def test_shortest_path_edges_no_path_or_missing() -> None:
     G = nx.DiGraph(); G.add_edge("A", "B"); G.add_node("Z")
     assert shortest_path_edges(G, "A", "Z") == set()
     assert shortest_path_edges(G, "missing", "B") == set()
+
+
+def test_via_edge_set_prefers_special_over_shorter() -> None:
+    """Must-cross-a-special-edge beats a shorter path that skips it."""
+    import networkx as nx
+    from unitgps.engine import shortest_paths_via_edge_set
+
+    G = nx.DiGraph()
+    G.add_edge("A", "T", special=False)   # direct, shortest, but not special
+    G.add_edge("A", "M", special=True)    # the required pivot
+    G.add_edge("M", "T", special=False)
+    f = lambda u, v, d: d.get("special", False)
+    assert shortest_paths_via_edge_set(G, "A", "T", f) == [["A", "M", "T"]]
+
+
+def test_via_edge_set_empty_when_no_special_edge() -> None:
+    import networkx as nx
+    from unitgps.engine import shortest_paths_via_edge_set
+
+    G = nx.DiGraph(); G.add_edge("A", "T", special=False)
+    assert shortest_paths_via_edge_set(G, "A", "T", lambda u, v, d: d.get("special", False)) == []

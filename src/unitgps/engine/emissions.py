@@ -12,7 +12,18 @@ from typing import Sequence
 import pandas as pd
 
 from .calculate import AmbiguityError, calculate_conversion_factor
-from .pathfinding import convert_path_to_edge_tuples, identify_conversion_path
+from .pathfinding import (
+    convert_path_to_edge_tuples,
+    identify_conversion_path,
+    shortest_paths_via_edge_set,
+)
+
+
+def _is_emission_factor_edge(u, v, data) -> bool:
+    """True if a graph edge is an emission factor (not a unit conversion or
+    fuel-property edge). Used to force GHG routes through a real EF."""
+    raw = data.get("Set", data.get("System", ""))
+    return "emission factor" in str(raw).strip().lower()
 
 
 def find_gwp(
@@ -79,7 +90,9 @@ def determine_ghg_emissions(
 
         try:
             F = graph_engine.filter_graph(current_params, include_emission_factors=True)
-            shortest_paths_nodes = identify_conversion_path(F, source, target)
+            shortest_paths_nodes = shortest_paths_via_edge_set(
+                F, source, target, _is_emission_factor_edge
+            )
             emissions_results[ghg]["Path"] = shortest_paths_nodes
 
             calc_results = calculate_conversion_factor(

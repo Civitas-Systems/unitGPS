@@ -84,3 +84,45 @@ def shortest_path_edges(G, source, target):
         for u, v in G.edges()
         if u in dist_from and v in dist_to and dist_from[u] + 1 + dist_to[v] == total
     }
+
+
+def shortest_paths_via_edge_set(G, source, target, edge_filter):
+    """Return the shortest source->target node paths that traverse at least one
+    edge accepted by ``edge_filter(u, v, data) -> bool``.
+
+    Use when a path is only *meaningful* if it crosses a particular kind of
+    edge — e.g. a GHG route must pass through an emission-factor edge, else it
+    is just a unit/fuel-mass conversion that happens to land on the same target
+    node. Returns ``[]`` if a node is missing or no qualifying path exists.
+    Cheap: two BFS passes plus one shortest-path reconstruction per minimal
+    pivot edge.
+    """
+    if not (G.has_node(source) and G.has_node(target)):
+        return []
+    dist_s = nx.single_source_shortest_path_length(G, source)
+    dist_t = nx.single_source_shortest_path_length(G.reverse(copy=False), target)
+    best = None
+    pivots: list = []
+    for u, v, data in G.edges(data=True):
+        if not edge_filter(u, v, data):
+            continue
+        if u in dist_s and v in dist_t:
+            total = dist_s[u] + 1 + dist_t[v]
+            if best is None or total < best:
+                best, pivots = total, [(u, v)]
+            elif total == best and (u, v) not in pivots:
+                pivots.append((u, v))
+    if best is None:
+        return []
+    paths: list = []
+    seen: set = set()
+    for a, b in pivots:
+        try:
+            full = nx.shortest_path(G, source, a) + nx.shortest_path(G, b, target)
+        except nx.NetworkXNoPath:
+            continue
+        key = tuple(full)
+        if key not in seen:
+            seen.add(key)
+            paths.append(full)
+    return paths

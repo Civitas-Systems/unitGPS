@@ -17,6 +17,7 @@ from .pathfinding import (
     convert_path_to_edge_tuples,
     identify_conversion_path,
     shortest_path_edges,
+    shortest_paths_via_edge_set,
 )
 
 __all__ = [
@@ -31,5 +32,6 @@ __all__ = [
     "format_sig_figs",
     "identify_conversion_path",
     "shortest_path_edges",
+    "shortest_paths_via_edge_set",
     "is_valid_parameter",
 ]
