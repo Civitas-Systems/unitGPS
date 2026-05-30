@@ -2,6 +2,8 @@
 
 Graph-based universal unit converter and GHG-emissions calculator. This folder is the **Claude** generation — the active rewrite that takes over from the `v0.4-Antigravity/` sibling.
 
+![How UnitGPS works](docs/assets/how-it-works.svg)
+
 ## Status
 
 - ✅ **Engine** ported, ~700 lines across 5 modules.

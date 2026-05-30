@@ -96,3 +96,10 @@ Ported from `v0.4-Antigravity/03-network.ipynb` (the original notebook by the pr
 ## See also
 
 [[network_viz]] · [[Unit graph]] · [[Hero pathway stepper]]
+
+## Updated 2026-05-30
+Rendered two ways via the Output-options "Network render" toggle: **Interactive** (Plotly,
+`render_network_plotly` — hover/zoom/pan) and **Static** (matplotlib). Path node labels
+are theme-aware (legible on light themes); only the highlighted path + dimension names are
+labelled, so the path isn't buried. An experimental pathway Sankey was tried and removed
+(uniform-width links carried no quantity). See [[network_viz]].

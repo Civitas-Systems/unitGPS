@@ -53,3 +53,9 @@ A typical CH₄ path looks like `J → Wh → MWh → kg` — three steps: unit 
 ## See also
 
 [[renderers - emissions]] · [[determine_ghg_emissions]] · [[Hero pathway stepper]] · [[Audit card hybrid layout]]
+
+## Updated 2026-05-30
+Superseding the donut→bar / folded-card design described above: the panel now leads with a
+transparent **Mass × GWP = CO₂e** table that makes the math explicit and the gases
+comparable; the per-gas cards moved to a collapsed provenance expander; the LaTeX
+derivation was removed as redundant with the table. See [[renderers - emissions]], [[CHANGELOG]] Pass 10–12.

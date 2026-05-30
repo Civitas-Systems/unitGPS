@@ -17,6 +17,8 @@ class DataLoader:
     """Load the Data Library and IPCC GWPs from disk."""
 
     def __init__(self, data_library_path: str, gwp_file_path: str) -> None:
+        """Store the filesystem paths to the Data Library and IPCC GWPs files
+        (``.xlsx`` or ``.parquet``); nothing is read until a ``load_*`` call."""
         self.data_library_path = data_library_path
         self.gwp_file_path = gwp_file_path
 

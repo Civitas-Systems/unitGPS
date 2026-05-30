@@ -21,6 +21,9 @@ class UnitGraph:
     """Wraps a ``networkx.MultiDiGraph`` of unit-to-unit conversions."""
 
     def __init__(self, data: pd.DataFrame, node_attributes: dict) -> None:
+        """Build the MultiDiGraph from an edge DataFrame (Denominator -> Numerator,
+        all columns kept as edge attributes) and attach the per-unit node
+        attributes (Unit Dimension / System / Color)."""
         self.G = nx.from_pandas_edgelist(
             data,
             source="Denominator",
@@ -62,6 +65,14 @@ class UnitGraph:
             dy_mode = "exact"
             dy_values = dy_param
 
+        # Hoist the active filters out of the per-edge loop: re-scanning ~20
+        # mostly-None search keys for every one of E edges is the dominant cost
+        # at scale. Pre-filter once; behaviour is identical.
+        active_filters = [
+            (p, v) for p, v in search_parameters.items()
+            if p != "Data Year" and v is not None
+        ]
+
         temp_edges = []
         global_max_year = -float("inf")
 
@@ -85,9 +96,7 @@ class UnitGraph:
             )
             match_found = True
             if not is_infrastructure:
-                for param, search_val in search_parameters.items():
-                    if param == "Data Year" or search_val is None:
-                        continue
+                for param, search_val in active_filters:
                     data_val = attributes.get(param)
                     if isinstance(search_val, list):
                         if data_val not in search_val:

@@ -10,6 +10,14 @@ tags: [changelog, history, passes]
 
 A pass-by-pass record of what changed during the v0.5-Claude generation. Newest first.
 
+## Pass 12 — Academic rigor, QA & scaling (2026-05-30)
+
+- **12.1 External validation.** `tests/test_validation.py`: the engine reproduces NIST unit conversions, IPCC AR4/AR5/AR6 100-yr GWPs, and the EPA anthracite emission factor **exactly**, and round-trips A→B→A within 0.1%. GHG constants independently web-verified. **68 tests** pass in CI.
+- **12.2 Methodology & QA docs.** `METHODOLOGY.md` (model, math, GHG accounting, data sources, assumptions & limitations), `QA_NOTES.md` (two-layer validation method + findings + forward framework for the data pipeline), `Roadmap to world-class.md`, `Reference/Data/Exact conversion constants.md` (precision reference), `Concepts/Performance and scaling.md` (benchmarks + roadmap). `CITATION.cff` for academic citability.
+- **12.3 Findings (left for Dave).** **F1** — data's AR6 CH₄ GWP-100 = 27.9 vs IPCC 29.8 (fossil)/27.0 (non-fossil). **F2** — round-trips agree to <0.1% (expected & healthy: real factors differ slightly by fuel/source/rounded constants).
+- **12.4 Performance.** Parquet load already supported (the easy scaling win — no code change); behaviour-identical active-filter hoist in `filter_graph`; precompute-edge-metadata + vectorise-in-pandas documented for the scale session.
+- **12.5 GHG panel.** Removed the redundant LaTeX "Show derivation" expander — the transparent Mass × GWP = CO₂e table supersedes it.
+
 ## Pass 11 — Hardening, accessibility & deploy prep (2026-05-30)
 
 - **11.1 Readable network-path labels.** The network view's path node labels were a hard-coded light grey (invisible on light themes); they now use the active theme's text colour so the units (e.g. `mmBTU -> ton -> g -> kg`) are legible on any theme and cross-reference against the step list. The static (matplotlib) render also stopped labelling *every* node — only the highlighted path + dimension names are labelled, so the path isn't buried. See [[Network visualization]], [[network_viz]].

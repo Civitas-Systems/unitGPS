@@ -94,15 +94,15 @@ The initial three-step build:
 
 The polish that followed — each "Pass" tracked in [[CHANGELOG]]:
 
-| Pass | What landed | Result |
-|------|-------------|--------|
-| 1.1–1.6 | LaTeX cleanup, dropdown sizing, step-type colors, collapsible panels | Cleaner first impression |
-| 1.5.1–1.5.13 | Date/numeric formatters, hybrid audit card, container max-width, filter chips, hero stepper, GHG condensed panel, tight ribbon experiment + revert | Major visual overhaul |
-| 1.6 | CSS specificity fix for Streamlit 1.57's `stMainBlockContainer` | Width cap actually applies |
-| 2.1–2.9 | `edge_picks` parameter end-to-end (engine + wrappers + tests + picker UI + path comparison + tabs) | Ambiguous paths now controllable |
-| 3.1–3.2 | WCAG audit + Glassmorphism contrast fix + 4 light/dark variants | 13 themes, all pass contrast |
-| 4.1–4.4 | Docs refresh for new modules, concept pages, frontmatter, MOC | 59 docs pages, all wiki-links resolve |
-| 5.1–5.4 | Dead-code removal, sharper edge-picker labels, Glossary refresh, this architecture refresh | Polish for "perfect" |
+| Pass         | What landed                                                                                                                                        | Result                                |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 1.1–1.6      | LaTeX cleanup, dropdown sizing, step-type colors, collapsible panels                                                                               | Cleaner first impression              |
+| 1.5.1–1.5.13 | Date/numeric formatters, hybrid audit card, container max-width, filter chips, hero stepper, GHG condensed panel, tight ribbon experiment + revert | Major visual overhaul                 |
+| 1.6          | CSS specificity fix for Streamlit 1.57's `stMainBlockContainer`                                                                                    | Width cap actually applies            |
+| 2.1–2.9      | `edge_picks` parameter end-to-end (engine + wrappers + tests + picker UI + path comparison + tabs)                                                 | Ambiguous paths now controllable      |
+| 3.1–3.2      | WCAG audit + Glassmorphism contrast fix + 4 light/dark variants                                                                                    | 13 themes, all pass contrast          |
+| 4.1–4.4      | Docs refresh for new modules, concept pages, frontmatter, MOC                                                                                      | 59 docs pages, all wiki-links resolve |
+| 5.1–5.4      | Dead-code removal, sharper edge-picker labels, Glossary refresh, this architecture refresh                                                         | Polish for "perfect"                  |
 
 Next planned: stand up an alternative UI variant (React or HTMX) against the same engine for a single-engine multi-frontend comparison.
 

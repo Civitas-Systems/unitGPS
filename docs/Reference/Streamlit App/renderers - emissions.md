@@ -192,3 +192,11 @@ Replaces Antigravity-era hard-coded debug-file writes — gone for good.
 ## See also
 
 [[app]] · [[renderers - conversion]] · [[determine_ghg_emissions]] · [[find_gwp]] · [[formatting.format_html_num]] · [[formatting.format_latex_num]] · [[formatting.sanitize_latex]] · `formatting.draw_path_graph` *(removed)* · [[GHG emissions and GWP]]
+
+## Updated 2026-05-30
+The GHG panel now leads with a transparent **Mass × GWP = CO₂e** table
+(`_render_ghg_calc_table`) — explicit per-gas math, comparable, with share bars and a
+total. The dense per-gas cards moved into a collapsed "Per-gas pathway & provenance"
+expander; an accessible/downloadable `st.dataframe` twin and a chart caption were added;
+the redundant LaTeX "Show derivation" expander was removed. See [[GHG condensed panel]],
+[[CHANGELOG]] 10.3 / 11.3 / 12.5.

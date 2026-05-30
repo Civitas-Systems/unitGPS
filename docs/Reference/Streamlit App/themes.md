@@ -106,3 +106,11 @@ See [[themes.inject_css]] for the full rule set.
 ## See also
 
 [[themes.get_theme]] · [[themes.inject_css]] · [[app]] · [[state]]
+
+## Updated 2026-05-30
+Adds a card treatment for `st.container(border=True)` panels (surface fill + theme
+elevation, targeted via a `.ug-card-head` marker + `:has()` because 1.57 puts the border
+in an emotion class, not inline style), bold section headers with a primary accent bar +
+rule, inline `segmented_control` styling, a contrast-safe `accent` token, a keyboard
+`:focus-visible` ring, and `prefers-reduced-motion`. Earthy Zen labels and the Share-link
+popover were contrast-fixed. See the `streamlit_css_targeting` memory and [[CHANGELOG]] Pass 10–11.

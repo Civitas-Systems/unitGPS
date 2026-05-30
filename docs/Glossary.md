@@ -174,3 +174,16 @@ The wrapper class around the `networkx.MultiDiGraph`. See [[UnitGraph]].
 
 ### WCAG contrast
 Web Content Accessibility Guidelines luminance-ratio thresholds. AA normal text = 4.5:1; AA large text / UI elements = 3:1; AAA normal text = 7:1. The theme audit (Pass 3.1) checks every theme's text/bg, secondary/bg, text/surface, and border/bg pairs against these. See [[themes]].
+
+## GHG & units domain terms (2026-05-30)
+
+- **GWP (Global Warming Potential)** — warming from 1 kg of a gas relative to 1 kg of CO₂ over a time horizon. CO₂ = 1 by definition.
+- **CO₂e (CO₂-equivalent)** — a gas's mass × its GWP; lets different gases be summed on one scale.
+- **Emission factor (EF)** — mass of a gas emitted per unit of activity (e.g. kg CO₂ per mmBTU). The edges a GHG route must cross.
+- **Assessment Report (AR)** — an IPCC report edition (AR4 2007, AR5 2013, AR6 2021) supplying GWP values.
+- **Time horizon** — the integration window for a GWP (20 / 100 / 500 yr); 100-yr is the regulatory default.
+- **Scope 1 / 2 / 3** — GHG Protocol categories: direct emissions / purchased energy / value-chain emissions.
+- **eGRID** — EPA database of regional U.S. electricity emission factors.
+- **mmBTU** — one million British thermal units (energy); BTU₍IT₎ = 1055.05585 J.
+- **HHV / LHV** — Higher / Lower Heating Value of a fuel (energy released per unit, with/without latent heat of water vapour).
+- **Reciprocal edge** — the synthesised inverse (Value → 1/Value) of a non-infrastructure edge, making emission-factor/property relationships bidirectional ([[Reciprocal edges]]).

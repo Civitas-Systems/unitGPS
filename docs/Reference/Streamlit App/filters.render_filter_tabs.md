@@ -95,3 +95,8 @@ render_filter_tabs(df_for_units, theme)
 ## See also
 
 [[filters]] · [[filters.dynamic_multiselect]] · [[filters.get_options]] · [[app]]
+
+## Updated 2026-05-30
+**Legacy.** The app no longer uses tabs — the filter UI is an inline `st.segmented_control`
+(see [[filters.get_active_filter_groups]] + [[filters.render_filter_group]]).
+`render_filter_tabs` remains only for compatibility.

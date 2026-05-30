@@ -66,3 +66,10 @@ The original notebook had three functions: `visualize_network`, `visualize_path`
 ## See also
 
 [[Network visualization]] · [[renderers - conversion]] · [[renderers - emissions]]
+
+## Updated 2026-05-30
+`render_pathway_sankey` / `_hex_to_rgba` were **removed** (the Sankey was dropped). Current
+functions: `render_network_figure` (matplotlib, static) and `render_network_plotly`
+(interactive). Both accept `label_color` so the highlighted-path unit labels use the
+active theme's text colour (legible on light themes); the static render no longer labels
+*every* node — only the path + dimension names. See [[Network visualization]], [[CHANGELOG]] 10.4 / 11.1.

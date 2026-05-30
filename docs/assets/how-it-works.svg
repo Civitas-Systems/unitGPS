@@ -1,0 +1,61 @@
+<svg viewBox="0 0 860 330" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,Segoe UI,sans-serif" role="img">
+  <title>How UnitGPS works</title>
+  <desc>Pipeline: the data library becomes a graph; each query filters it, finds a shortest path from source to target, and multiplies the edge values to a result. In GHG mode each gas is routed through a real emission factor and weighted by its GWP, then summed to a total CO2e.</desc>
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#9aa0a6"/>
+    </marker>
+  </defs>
+  <rect width="860" height="330" fill="#ffffff"/>
+  <text x="32" y="40" font-size="22" font-weight="700" fill="#18181b">How UnitGPS works</text>
+  <text x="32" y="63" font-size="13" fill="#52525b">Units are nodes, conversions are edges — a conversion is the product of the edge values along a path.</text>
+
+  <!-- pipeline -->
+  <g font-size="13" fill="#27272a" text-anchor="middle">
+    <g>
+      <rect x="32"  y="92" width="140" height="54" rx="9" fill="#f4f4f5" stroke="#d4d4d8"/>
+      <text x="102" y="115" font-weight="600">Data Library</text><text x="102" y="133" font-size="11" fill="#71717a">xlsx / parquet</text>
+    </g>
+    <g>
+      <rect x="204" y="92" width="140" height="54" rx="9" fill="#f4f4f5" stroke="#d4d4d8"/>
+      <text x="274" y="115" font-weight="600">filter_graph</text><text x="274" y="133" font-size="11" fill="#71717a">one rule</text>
+    </g>
+    <g>
+      <rect x="376" y="92" width="140" height="54" rx="9" fill="#f4f4f5" stroke="#d4d4d8"/>
+      <text x="446" y="115" font-weight="600">shortest path</text><text x="446" y="133" font-size="11" fill="#71717a">source → target</text>
+    </g>
+    <g>
+      <rect x="548" y="92" width="140" height="54" rx="9" fill="#f4f4f5" stroke="#d4d4d8"/>
+      <text x="618" y="115" font-weight="600">calculate</text><text x="618" y="133" font-size="11" fill="#71717a">× edge values</text>
+    </g>
+    <g>
+      <rect x="720" y="92" width="108" height="54" rx="9" fill="#ede9fe" stroke="#c4b5fd"/>
+      <text x="774" y="115" font-weight="600" fill="#5b21b6">result</text><text x="774" y="133" font-size="11" fill="#7c5cd6">+ audit trail</text>
+    </g>
+    <g stroke="#9aa0a6" stroke-width="1.5" marker-end="url(#ah)">
+      <line x1="174" y1="119" x2="200" y2="119"/><line x1="346" y1="119" x2="372" y2="119"/>
+      <line x1="518" y1="119" x2="544" y2="119"/><line x1="690" y1="119" x2="716" y2="119"/>
+    </g>
+  </g>
+
+  <line x1="32" y1="186" x2="828" y2="186" stroke="#ececec"/>
+  <text x="32" y="210" font-size="13" font-weight="600" fill="#52525b">In GHG mode — each gas routed independently (through a real emission factor), weighted, summed:</text>
+
+  <!-- GHG fan-in -->
+  <g font-size="12.5" text-anchor="middle">
+    <g><rect x="32" y="230" width="150" height="34" rx="8" fill="#fff" stroke="#d4d4d8"/>
+       <rect x="32" y="230" width="5" height="34" rx="2" fill="#8B5CF6"/><text x="110" y="252" fill="#27272a">CO₂ · Mass × GWP</text></g>
+    <g><rect x="32" y="270" width="150" height="34" rx="8" fill="#fff" stroke="#d4d4d8"/>
+       <rect x="32" y="270" width="5" height="34" rx="2" fill="#10b981"/><text x="110" y="292" fill="#27272a">CH₄ · Mass × GWP</text></g>
+    <g><rect x="32" y="310" width="150" height="14" rx="4" fill="none"/></g>
+  </g>
+  <g font-size="12.5" text-anchor="middle">
+    <g><rect x="200" y="250" width="150" height="34" rx="8" fill="#fff" stroke="#d4d4d8"/>
+       <rect x="200" y="250" width="5" height="34" rx="2" fill="#ef4444"/><text x="278" y="272" fill="#27272a">N₂O · Mass × GWP</text></g>
+    <g><rect x="430" y="250" width="130" height="34" rx="8" fill="#ede9fe" stroke="#c4b5fd"/>
+       <text x="495" y="272" font-weight="700" fill="#5b21b6">Σ  Total CO₂e</text></g>
+    <g stroke="#9aa0a6" stroke-width="1.5" marker-end="url(#ah)">
+      <line x1="182" y1="247" x2="426" y2="262"/><line x1="182" y1="287" x2="426" y2="270"/><line x1="350" y1="267" x2="426" y2="267"/>
+    </g>
+  </g>
+</svg>

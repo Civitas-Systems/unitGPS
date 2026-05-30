@@ -180,3 +180,15 @@ The rewrite also collapsed the GHG panel from 5 stacked blocks (total + equation
 - Filter **tabs → inline segmented control** (`render_filter_group`, `get_active_filter_groups`).
 - One filter rule (infra-always / blank-excludes / blank-year-wildcard) replaced the old multi-rule logic in [[UnitGraph.filter_graph]].
 - GHG result panel: transparent **Mass × GWP = CO₂e** table; LaTeX derivation removed as redundant.
+
+## Guides & visuals (2026-05-30)
+- [[Diagrams]] — Mermaid data-flow, GHG-accounting, and filter-rule diagrams.
+- [[Tutorial — worked example]] — 1 mmBTU anthracite → 104.42 kg CO₂e, end to end.
+- [[References]] — bibliography (NIST, IPCC, EPA, libraries).
+- [[Performance and scaling]] — benchmarks + scaling roadmap (Parquet, Polars, DuckDB, native).
+- [[Reference/Data/Exact conversion constants]] — precision reference for the data pipeline.
+- [[FAQ]] — plain-language answers (GWP, CO₂e, accuracy, scopes, limits).
+- [[Scenarios]] — a gallery of example configurations.
+- [[Reference/Data/Provenance and licensing]] — sources, traceability, and licensing.
+- [[Abstract]] — draft abstract + paper outline (if ever presented).
+- [[filters.get_active_filter_groups]], [[filters.render_filter_group]], [[filters.dimension_reach]] — the inline-filter + reachability functions.
