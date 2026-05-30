@@ -274,94 +274,86 @@ def render_active_filter_chips(theme: dict) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Tab rendering                                                                #
+# Filter group rendering                                                       #
 # --------------------------------------------------------------------------- #
 
 
-def render_filter_tabs(df_for_units: pd.DataFrame, theme: dict, do_ghg: bool = False) -> None:
-    """Render the active Resources/Process/Location/Data Source tabs.
-
-    When ``do_ghg`` is True, the IPCC AR + Time Horizon selectors are rendered
-    inside the Process tab (they're effectively process-of-attribution settings
-    for GHG accounting). When False, they don't render at all.
-
-    The Process tab is always shown when ``do_ghg=True`` even if no Process
-    column has options — otherwise the GWP controls would have nowhere to live.
-    """
-    active_groups: list[tuple[str, list[str]]] = []
+def get_active_filter_groups(df_for_units: pd.DataFrame, do_ghg: bool = False) -> list[str]:
+    """Names of filter groups that currently have options (Process kept when do_ghg)."""
+    names: list[str] = []
     for g_name, g_cols in FILTER_GROUPS.items():
         has_options = any(len(get_options(df_for_units, col)) > 0 for col in g_cols)
         if has_options or (g_name == "Process" and do_ghg):
-            active_groups.append((g_name, g_cols))
+            names.append(g_name)
+    return names
 
-    if not active_groups:
+
+def render_filter_group(g_name: str, df_for_units: pd.DataFrame, theme: dict) -> None:
+    """Render one filter group's widgets, full width."""
+    if g_name == "Resources":
+        f1, f2 = st.columns(2)
+        with f1:
+            dynamic_multiselect("Chemical Category", "Source-Chemical Category", df_for_units)
+            dynamic_multiselect("Formula", "Formula", df_for_units)
+        with f2:
+            dynamic_multiselect("Chemical Type", "Source-Chemical Type", df_for_units)
+            dynamic_multiselect("Property", "Property", df_for_units)
+
+    elif g_name == "Process":
+        p1, p2 = st.columns(2)
+        with p1:
+            dynamic_multiselect("Process 1", "Process1", df_for_units)
+        with p2:
+            dynamic_multiselect("Process 2", "Process2", df_for_units)
+
+        e1, e2 = st.columns([1, 2])
+        with e1:
+            st.markdown(
+                f"<div style='font-size:0.85rem; color:{theme['secondary']} !important; "
+                f"font-weight:500; margin-bottom:8px; margin-top:8px;'>SCOPE</div>",
+                unsafe_allow_html=True,
+            )
+            scope_cols = st.columns([1, 1, 1])
+            available_scopes = get_options(df_for_units, "Scope")
+
+            raw = st.session_state.get("Scope_raw", [])
+            s_c1 = scope_cols[0].checkbox("1", value=("1" in raw)) if "1" in available_scopes else False
+            s_c2 = scope_cols[1].checkbox("2", value=("2" in raw)) if "2" in available_scopes else False
+            s_c3 = scope_cols[2].checkbox("3", value=("3" in raw)) if "3" in available_scopes else False
+
+            st.session_state["Scope_raw"] = [
+                s for s, b in [("1", s_c1), ("2", s_c2), ("3", s_c3)] if b
+            ]
+            st.session_state["Scope"] = [int(s) for s in st.session_state["Scope_raw"]]
+        with e2:
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+            dynamic_multiselect("Category", "Category", df_for_units)
+
+    elif g_name == "Location":
+        g1, g2 = st.columns(2)
+        with g1:
+            dynamic_multiselect("Country", "Country", df_for_units)
+        with g2:
+            dynamic_multiselect("eGRID Region", "eGRID", df_for_units)
+
+    elif g_name == "Data Source":
+        sm1, sm2 = st.columns(2)
+        with sm1:
+            dynamic_multiselect("Agency", "Agency", df_for_units)
+        with sm2:
+            dynamic_multiselect("Dataset", "Dataset", df_for_units)
+
+
+def render_filter_tabs(df_for_units: pd.DataFrame, theme: dict, do_ghg: bool = False) -> None:
+    """Legacy tabbed view (kept for compatibility; the app now uses an inline selector)."""
+    names = get_active_filter_groups(df_for_units, do_ghg)
+    if not names:
         st.info("No database filters apply to the selected Source and Target units.")
         return
-
-    tabs = st.tabs([g[0] for g in active_groups])
-
-    for idx, (g_name, _g_cols) in enumerate(active_groups):
+    tabs = st.tabs(names)
+    for idx, g_name in enumerate(names):
         with tabs[idx]:
-            if g_name == "Resources":
-                f1, f2 = st.columns(2)
-                with f1:
-                    dynamic_multiselect("Chemical Category", "Source-Chemical Category", df_for_units)
-                    dynamic_multiselect("Formula", "Formula", df_for_units)
-                with f2:
-                    dynamic_multiselect("Chemical Type", "Source-Chemical Type", df_for_units)
-                    dynamic_multiselect("Property", "Property", df_for_units)
-
-            elif g_name == "Process":
-                p1, p2 = st.columns(2)
-                with p1:
-                    dynamic_multiselect("Process 1", "Process1", df_for_units)
-                with p2:
-                    dynamic_multiselect("Process 2", "Process2", df_for_units)
-
-                e1, e2 = st.columns([1, 2])
-                with e1:
-                    st.markdown(
-                        f"<div style='font-size:0.85rem; color:{theme['secondary']} !important; "
-                        f"font-weight:500; margin-bottom:8px; margin-top:8px;'>SCOPE</div>",
-                        unsafe_allow_html=True,
-                    )
-                    scope_cols = st.columns([1, 1, 1])
-                    available_scopes = get_options(df_for_units, "Scope")
-
-                    raw = st.session_state.get("Scope_raw", [])
-                    s_c1 = scope_cols[0].checkbox("1", value=("1" in raw)) if "1" in available_scopes else False
-                    s_c2 = scope_cols[1].checkbox("2", value=("2" in raw)) if "2" in available_scopes else False
-                    s_c3 = scope_cols[2].checkbox("3", value=("3" in raw)) if "3" in available_scopes else False
-
-                    st.session_state["Scope_raw"] = [
-                        s for s, b in [("1", s_c1), ("2", s_c2), ("3", s_c3)] if b
-                    ]
-                    # The graph + DataFrame store Scope as numbers (1.0/2.0/3.0)
-                    # while the checkboxes yield string labels. Mirror to ints so
-                    # list-membership (engine) and DataFrame .isin() comparisons
-                    # match the numeric column (1 == 1.0), and chips still show "1"
-                    # not "1.0". Without this, picking a Scope dropped every
-                    # emission factor (string "1" never equals float 1.0).
-                    st.session_state["Scope"] = [
-                        int(s) for s in st.session_state["Scope_raw"]
-                    ]
-                with e2:
-                    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-                    dynamic_multiselect("Category", "Category", df_for_units)
-
-            elif g_name == "Location":
-                g1, g2 = st.columns(2)
-                with g1:
-                    dynamic_multiselect("Country", "Country", df_for_units)
-                with g2:
-                    dynamic_multiselect("eGRID Region", "eGRID", df_for_units)
-
-            elif g_name == "Data Source":
-                sm1, sm2 = st.columns(2)
-                with sm1:
-                    dynamic_multiselect("Agency", "Agency", df_for_units)
-                with sm2:
-                    dynamic_multiselect("Dataset", "Dataset", df_for_units)
+            render_filter_group(g_name, df_for_units, theme)
 
 
 # --------------------------------------------------------------------------- #

@@ -22,7 +22,7 @@ import streamlit as st
 from unitgps.engine import determine_ghg_emissions, format_sig_figs
 
 from ..export import audit_to_json, audit_to_markdown
-from ..network_viz import ghg_palette, render_network_figure, render_network_plotly, render_pathway_sankey
+from ..network_viz import ghg_palette, render_network_figure, render_network_plotly
 from ..formatting import format_html_num, format_latex_num, normalize_param_value, sanitize_latex
 from .conversion import (
     STATIC_SETS,
@@ -350,6 +350,97 @@ def _render_per_gas_compact_card(
     )
 
 
+def _render_ghg_calc_table(
+    per_gas: dict, total_co2e: float, gas_colors: dict, target_unit: str, theme: dict
+) -> None:
+    """One aligned table that makes the math explicit and the gases comparable.
+
+    Each row reads as the equation it is -- ``Mass x GWP = CO2e`` -- with a share
+    bar, so the user can *see* the calculation and the differences between gases
+    instead of having to trust three separate numbers.
+    """
+    sub, tx, bd = theme["secondary"], theme["text"], theme["border"]
+    u = target_unit
+    label_of = {"CO2": "CO\u2082", "CH4": "CH\u2084", "N2O": "N\u2082O"}
+
+    def num(content, *, strong=False, color=None):
+        sty = (f"padding:7px 8px; text-align:right; white-space:nowrap; "
+               f"font-family:monospace; color:{color or tx} !important;"
+               + ("font-weight:700;" if strong else ""))
+        return f"<td style='{sty}'>{content}</td>"
+
+    def op(sym):
+        return (f"<td style='padding:7px 3px; text-align:center; "
+                f"color:{sub} !important;'>{sym}</td>")
+
+    head = (
+        f"<tr style='font-size:0.64rem; text-transform:uppercase; letter-spacing:0.5px; "
+        f"color:{sub} !important;'>"
+        f"<th style='text-align:left; padding:4px 8px;'>Gas</th>"
+        f"<th style='text-align:right; padding:4px 8px;'>Mass</th><th></th>"
+        f"<th style='text-align:right; padding:4px 8px;'>GWP</th><th></th>"
+        f"<th style='text-align:right; padding:4px 8px;'>CO\u2082e</th>"
+        f"<th style='text-align:left; padding:4px 14px;'>Share</th></tr>"
+    )
+
+    body = ""
+    for ghg in ("CO2", "CH4", "N2O"):
+        d = per_gas.get(ghg, {}) or {}
+        mass, gwp, co2e = d.get("Mass"), d.get("GWP"), d.get("CO2e")
+        color = gas_colors.get(ghg, sub)
+        badge = (
+            f"<span style='display:inline-flex; align-items:center; gap:7px;'>"
+            f"<span style='width:10px; height:10px; border-radius:2px; "
+            f"background:{color}; display:inline-block;'></span>"
+            f"<span style='color:{tx} !important; font-weight:600;'>{label_of[ghg]}</span></span>"
+        )
+        if mass is None or co2e is None:
+            body += (
+                f"<tr style='border-top:1px solid {bd};'>"
+                f"<td style='padding:7px 8px;'>{badge}</td>"
+                f"<td colspan='6' style='padding:7px 8px; color:{sub} !important; "
+                f"font-size:0.78rem;'>no path found</td></tr>"
+            )
+            continue
+        pct = (co2e / total_co2e * 100) if total_co2e else 0.0
+        gwp_s = (str(int(gwp)) if (gwp is not None and float(gwp).is_integer())
+                 else (f"{gwp:g}" if gwp is not None else "\u2014"))
+        barw = max(pct, 0.8)
+        share = (
+            f"<div style='display:flex; align-items:center; gap:8px;'>"
+            f"<div style='height:7px; width:96px; background:{bd}; border-radius:4px; "
+            f"overflow:hidden;'><div style='height:100%; width:{barw:.1f}%; "
+            f"background:{color};'></div></div>"
+            f"<span style='font-size:0.74rem; color:{tx} !important; "
+            f"min-width:40px;'>{pct:.1f}%</span></div>"
+        )
+        body += (
+            f"<tr style='border-top:1px solid {bd}; font-size:0.82rem;'>"
+            f"<td style='padding:7px 8px;'>{badge}</td>"
+            f"{num(f'{format_sig_figs(mass, 4)} {u}')}{op('×')}{num(gwp_s)}"
+            f"{op('=')}{num(f'{format_sig_figs(co2e, 4)} {u}', strong=True, color=color)}"
+            f"<td style='padding:7px 14px;'>{share}</td></tr>"
+        )
+
+    total_row = (
+        f"<tr style='border-top:2px solid {bd};'>"
+        f"<td style='padding:8px 8px; color:{sub} !important; font-size:0.7rem; "
+        f"text-transform:uppercase; letter-spacing:0.5px; font-weight:600;'>Total</td>"
+        f"<td colspan='4'></td>"
+        f"<td style='padding:8px 8px; text-align:right; font-family:monospace; "
+        f"font-weight:700; color:{tx} !important; white-space:nowrap;'>"
+        f"{format_sig_figs(total_co2e, 4)} {u}</td>"
+        f"<td style='padding:8px 14px; color:{sub} !important; font-size:0.72rem;'>"
+        f"CO\u2082e</td></tr>"
+    )
+
+    st.markdown(
+        f"<table style='width:100%; border-collapse:collapse; margin:4px 0 8px 0;'>"
+        f"{head}{body}{total_row}</table>",
+        unsafe_allow_html=True,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Panel orchestrator                                                            #
 # --------------------------------------------------------------------------- #
@@ -518,28 +609,31 @@ def render_emissions_panel(
             with st.expander("Show derivation", expanded=False):
                 st.latex(latex_eq)
 
-            # ── Per-gas compact cards (with folded-in Mass/GWP/CO2e) ──
-            # Find dominant contributor (max CO2e) for ★ marker.
+            # ── Transparent calculation: Mass × GWP = CO₂e, gases side by side ──
+            st.markdown(
+                f"<div style='font-size:0.7rem; color:{theme['secondary']} !important; "
+                f"text-transform:uppercase; letter-spacing:0.5px; font-weight:600; "
+                f"margin: 14px 0 4px 0;'>How the total is built — Mass × GWP = CO₂e</div>",
+                unsafe_allow_html=True,
+            )
+            _render_ghg_calc_table(res["results"], total_co2e, gas_colors, target_unit, theme)
+
+            # ── Per-gas pathway & provenance (where each Mass comes from) ──
             dominant_ghg = max(
                 ("CO2", "CH4", "N2O"),
                 key=lambda g: (res["results"].get(g, {}).get("CO2e") or 0),
             )
-            st.markdown(
-                f"<div style='font-size:0.7rem; color:{theme['secondary']} !important; "
-                f"text-transform:uppercase; letter-spacing:0.5px; font-weight:600; "
-                f"margin: 14px 0 8px 0;'>Per-gas pathway & provenance</div>",
-                unsafe_allow_html=True,
-            )
-            for ghg in ("CO2", "CH4", "N2O"):
-                _render_per_gas_compact_card(
-                    ghg=ghg,
-                    details=res["results"][ghg],
-                    total_co2e=total_co2e,
-                    target_unit=target_unit,
-                    accent=gas_colors[ghg],
-                    theme=theme,
-                    is_dominant=(ghg == dominant_ghg),
-                )
+            with st.expander("Per-gas pathway & provenance", expanded=False):
+                for ghg in ("CO2", "CH4", "N2O"):
+                    _render_per_gas_compact_card(
+                        ghg=ghg,
+                        details=res["results"][ghg],
+                        total_co2e=total_co2e,
+                        target_unit=target_unit,
+                        accent=gas_colors[ghg],
+                        theme=theme,
+                        is_dominant=(ghg == dominant_ghg),
+                    )
 
             # Network view — full graph with all three gas pathways overlaid
             # in their accent colors. Lets the user see CO2/CH4/N2O routing
@@ -560,15 +654,10 @@ def render_emissions_panel(
                     ghg_paths.append(chosen)
                     ghg_path_colors.append(gas_colors.get(ghg, theme.get("primary", "#888")))
             if ghg_paths:
-                _graph_viz = st.session_state.get("graph_viz", "Network")
                 _viz_mode = st.session_state.get("viz_mode", "Interactive")
-                with st.expander(f"🌐 Show GHG {_graph_viz.lower()} view", expanded=False):
+                with st.expander("🌐 Show GHG network view", expanded=False):
                     try:
-                        if _graph_viz == "Sankey":
-                            st.plotly_chart(
-                                render_pathway_sankey(ghg_paths, path_colors=ghg_path_colors),
-                                use_container_width=True)
-                        elif _viz_mode == "Interactive":
+                        if _viz_mode == "Interactive":
                             st.plotly_chart(
                                 render_network_plotly(graph_engine, highlight_paths=ghg_paths,
                                                       path_colors=ghg_path_colors),

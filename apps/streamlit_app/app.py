@@ -37,8 +37,10 @@ from streamlit_app.filters import (  # noqa: E402
     apply_db_and_temporal_filters,
     apply_pathway_scope,
     build_search_params,
+    get_active_filter_groups,
     get_options,
     render_active_filter_chips,
+    render_filter_group,
     render_filter_tabs,
 )
 from streamlit_app.renderers.conversion import render_conversion_panel  # noqa: E402
@@ -255,8 +257,7 @@ col_src, col_arr, col_tgt = st.columns([1, 0.1, 1])
 with col_src:
     with st.container(border=True):
         st.markdown(
-            f"<h4 style='color: {theme['primary']} !important; margin-top: 0; margin-bottom: 10px;'>"
-            "Source</h4>",
+            "<div class='ug-section-head ug-card-head'>Source</div>",
             unsafe_allow_html=True,
         )
         s1, s2, s3 = st.columns([2, 3, 3])
@@ -294,8 +295,7 @@ with col_arr:
 with col_tgt:
     with st.container(border=True):
         st.markdown(
-            f"<h4 style='color: {theme['primary']} !important; margin-top: 0; margin-bottom: 10px;'>"
-            "Target</h4>",
+            "<div class='ug-section-head ug-card-head'>Target</div>",
             unsafe_allow_html=True,
         )
         t1, t2, t3 = st.columns([2, 3, 3])
@@ -350,10 +350,10 @@ for col in COLS_TO_EXTRACT:
 # --------------------------------------------------------------------------- #
 # Three-column control row: Modules | Temporal Scope | Output options          #
 # --------------------------------------------------------------------------- #
-ctrl_mod, ctrl_temp, ctrl_out = st.columns([1.35, 1.3, 1.0], gap="large")
+ctrl_mod, ctrl_temp, ctrl_out = st.columns([1.25, 1.0, 1.2], gap="small")
 
 with ctrl_mod, st.container(border=True):
-    st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Modules</h3>", unsafe_allow_html=True)
+    st.markdown("<div class='ug-section-head ug-card-head'>Modules</div>", unsafe_allow_html=True)
     st.checkbox(f"🔄 Unit Conversions ({conv_count})", value=st.session_state.get("cb_mod_conv", True), key="cb_mod_conv")
     st.checkbox(f"📐 Magnitude Adjustments ({mag_count})", value=st.session_state.get("cb_mod_mag", True), key="cb_mod_mag")
     st.checkbox(f"⛽ Fuel Properties ({fuel_count})", value=st.session_state.get("cb_mod_fuel", True), key="cb_mod_fuel")
@@ -381,7 +381,7 @@ with ctrl_mod, st.container(border=True):
             )
 
 with ctrl_temp, st.container(border=True):
-    st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Temporal Scope</h3>", unsafe_allow_html=True)
+    st.markdown("<div class='ug-section-head ug-card-head'>Temporal Scope</div>", unsafe_allow_html=True)
     mode = st.radio(
         "Temporal Scope",
         ["All Years", "Most Recent Global", "Most Recent per Path", "Specific Years", "Range"],
@@ -424,19 +424,12 @@ with ctrl_temp, st.container(border=True):
         dy_mode_engine = "recent_edge"
 
 with ctrl_out, st.container(border=True):
-    st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Output options</h3>", unsafe_allow_html=True)
+    st.markdown("<div class='ug-section-head ug-card-head'>Output options</div>", unsafe_allow_html=True)
     st.selectbox(
         "Max paths",
         options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 75, 100, "All"],
         key="max_paths",
         help="How many alternative conversion paths to compute and display.",
-    )
-    st.radio(
-        "Diagram",
-        ["Network", "Sankey"],
-        key="graph_viz",
-        horizontal=True,
-        help="Network = the dimension graph with your path highlighted. Sankey = the path as a left-to-right flow.",
     )
     st.radio(
         "Network render",
@@ -456,9 +449,27 @@ with ctrl_out, st.container(border=True):
 # --------------------------------------------------------------------------- #
 with st.container():
     st.markdown('<div class="db-filters-anchor"></div>', unsafe_allow_html=True)
-    title_col, calc_col = st.columns([5.0, 1.4], vertical_alignment="bottom")
+    # Scope filter options to the chosen source->target pathway (electricity
+    # MWh->kg hides coal/fuel chemical types); df_modules keeps reachability
+    # independent of db-filter picks. Then find which categories have options.
+    df_for_filters = apply_pathway_scope(df_for_units, df_modules, source_unit, target_unit, node_attrs)
+    filter_groups = get_active_filter_groups(df_for_filters, do_ghg=do_ghg)
+
+    # Toolbar row: title | category selector (fills the old dead gap) | Calculate.
+    title_col, seg_col, calc_col = st.columns([1.5, 4.0, 1.4], vertical_alignment="bottom")
     with title_col:
-        st.markdown("<h3 style='margin-top:0px; margin-bottom:5px;'>Database Filters</h3>", unsafe_allow_html=True)
+        st.markdown("<div class='ug-section-head'>Database Filters</div>", unsafe_allow_html=True)
+    with seg_col:
+        sel_group = None
+        if filter_groups:
+            if st.session_state.get("filter_group_sel") not in filter_groups:
+                st.session_state["filter_group_sel"] = filter_groups[0]
+            sel_group = st.segmented_control(
+                "Filter category",
+                filter_groups,
+                key="filter_group_sel",
+                label_visibility="collapsed",
+            ) or filter_groups[0]
     with calc_col:
         st.markdown(
             "<div style='text-align:right;'><span class='calc-btn-anchor'></span></div>",
@@ -469,16 +480,22 @@ with st.container():
     if run_btn:
         st.session_state["run_clicked"] = True
 
-    # Display-only summary of every active filter selection — sits above the
-    # filter tabs as a scannable reminder of what's currently narrowing the search.
+    # Scannable summary of every active filter selection.
     render_active_filter_chips(theme)
 
-    # Scope filter options to the chosen source->target pathway: only show
-    # filter values on a shortest conversion path (electricity MWh->kg hides
-    # coal/fuel chemical types). df_modules keeps reachability independent of
-    # db-filter picks; falls back to unscoped when there's no path.
-    df_for_filters = apply_pathway_scope(df_for_units, df_modules, source_unit, target_unit, node_attrs)
-    render_filter_tabs(df_for_filters, theme, do_ghg=do_ghg)
+    if not filter_groups:
+        st.info("No database filters apply to the selected Source and Target units.")
+    else:
+        # Selected category renders full-width; the others render inside a
+        # display:none container so their multiselect state survives a switch
+        # (mirrors how st.tabs keeps every panel mounted each run).
+        render_filter_group(sel_group, df_for_filters, theme)
+        for _g in filter_groups:
+            if _g == sel_group:
+                continue
+            with st.container():
+                st.markdown("<span class='ug-hidden-group'></span>", unsafe_allow_html=True)
+                render_filter_group(_g, df_for_filters, theme)
 
 # --------------------------------------------------------------------------- #
 # Build search_params for the engine                                           #
@@ -533,6 +550,8 @@ if st.session_state.get("run_clicked", False):
 
 with start_val_container:
     st.number_input("Starting Value", step=None, key="start_val", on_change=on_start_change)
+    if st.session_state.get("start_val") == 0:
+        st.caption("⚠ Starting value is 0 — outputs stay 0 until you enter a value.")
 
 with final_val_container:
     st.number_input("Final Value", step=None, key="final_val", on_change=on_final_change)

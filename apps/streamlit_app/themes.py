@@ -32,7 +32,7 @@ THEMES: dict[str, dict] = {
         "tab_radius": "16px 16px 0 0", "border_width": "0px", "input_bg": "#FFFFFF",
     },
     "Neo-Brutalism": {
-        "bg": "#FACC15", "surface": "#FFFFFF", "primary": "#FF90E8",
+        "bg": "#FACC15", "surface": "#FFFFFF", "primary": "#FF90E8", "accent": "#1A1A1A",
         "text_on_primary": "#000000", "text": "#000000", "secondary": "#000000",
         "border": "#000000", "danger": "#ff3333", "success": "#23A094",
         "font": "'Plus Jakarta Sans', sans-serif",
@@ -65,7 +65,7 @@ THEMES: dict[str, dict] = {
     },
     "Earthy Zen": {
         "bg": "#F9F6F0", "surface": "#FCFAF8", "primary": "#78866B",
-        "text_on_primary": "#FFFFFF", "text": "#3A3A3A", "secondary": "#C17767",
+        "text_on_primary": "#FFFFFF", "text": "#3A3A3A", "secondary": "#A85843",
         # Border bumped from #EAE3D9 (1.2:1) to #CABEAA for visible card edges.
         "border": "#CABEAA", "danger": "#C17767", "success": "#78866B",
         "font": "Georgia, serif",
@@ -160,6 +160,12 @@ def inject_css(theme: dict) -> None:
     th = theme
     bg_prop = "background" if "gradient" in th["bg"] else "background-color"
     text_on_primary = th.get("text_on_primary", "#FFFFFF")
+    # Card elevation: themes built around a signature shadow (hard offset, neon
+    # glow) keep theirs; flat/subtle themes get a soft lift so panels read as
+    # distinct cards even when surface ~= background (e.g. Earthy Zen).
+    _sh = th.get("shadow", "none")
+    card_shadow = _sh if any(t in _sh for t in ("px 0px", "0px #", "0 0 ")) \
+        else "0 1px 3px rgba(0,0,0,0.07), 0 10px 26px rgba(0,0,0,0.06)"
 
     st.markdown(
         f"""
@@ -240,10 +246,80 @@ def inject_css(theme: dict) -> None:
     }}
     /* st.container(border=True) wrappers — Streamlit 1.57 puts the border on
        the stVerticalBlock div itself rather than a wrapper. Match either path. */
-    [data-testid="stVerticalBlock"][style*="border"],
-    div[data-testid="stVerticalBlockBorderWrapper"] {{
-        border-radius: 10px !important;
-        background: transparent !important;
+    /* Control cards: st.container(border=True) renders as a bare stVerticalBlock
+       (border lives in an emotion class, not inline style), so we target the ones
+       carrying a .ug-card-head marker. Surface fill + soft elevation make each
+       group read as a distinct panel on light AND dark themes. */
+    [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ug-card-head) {{
+        border-radius: {th['radius']} !important;
+        background: {th['surface']} !important;
+        border: {th['border_width']} solid {th['border']} !important;
+        box-shadow: {card_shadow} !important;
+        padding: 0.4rem 1.1rem 0.9rem 1.1rem !important;
+    }}
+    /* Max paths only holds 1-3 char values — don't let it span the whole card. */
+    .st-key-max_paths {{ max-width: 160px !important; }}
+    /* Inline filter-category selector: hide the non-active groups (their widgets
+       still mount so multiselect state survives a category switch). */
+    [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .ug-hidden-group) {{
+        display: none !important;
+    }}
+    /* Segmented control = filter category pills. This Streamlit build renders it
+       as a block-level stButtonGroup (pills stack vertically) with
+       stBaseButton-segmented_control[Active] buttons. Force a horizontal row and
+       theme both pill states so they're readable on every palette. */
+    .st-key-filter_group_sel {{ width: 100% !important; }}
+    .st-key-filter_group_sel [data-testid="stButtonGroup"] {{ display: block !important; width: 100% !important; max-width: none !important; }}
+    /* The inner div actually holds the 4 pill buttons — make IT the horizontal row. */
+    .st-key-filter_group_sel [data-testid="stButtonGroup"] > div:last-child {{
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        width: 100% !important;
+        max-width: none !important;
+    }}
+    .st-key-filter_group_sel button[data-testid^="stBaseButton-segmented_control"] {{
+        flex: 1 1 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        padding: 0.3rem 0.5rem !important;
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+    }}
+    .st-key-filter_group_sel button[data-testid="stBaseButton-segmented_control"] {{
+        background: {th['surface']} !important;
+        color: {th['text']} !important;
+        border: {th['border_width']} solid {th['border']} !important;
+    }}
+    .st-key-filter_group_sel button[data-testid="stBaseButton-segmented_controlActive"] {{
+        background: {th['primary']} !important;
+        color: {text_on_primary} !important;
+        border: {th['border_width']} solid {th['primary']} !important;
+    }}
+    /* Section headers (Source / Target / Modules / Temporal Scope / Output / Filters):
+       bolder + a touch larger, with a primary accent bar and a hairline rule so each
+       group is easy to find and clearly separated from its neighbours. */
+    .ug-section-head {{
+        display: flex !important;
+        align-items: center !important;
+        gap: 9px !important;
+        font-size: 1.16rem !important;
+        font-weight: 700 !important;
+        color: {th['text']} !important;
+        letter-spacing: -0.01em !important;
+        margin: 2px 0 13px 0 !important;
+        padding-bottom: 9px !important;
+        border-bottom: 1.5px solid {th['border']} !important;
+    }}
+    .ug-section-head::before {{
+        content: "" !important;
+        flex: 0 0 auto !important;
+        width: 4px !important;
+        height: 19px !important;
+        border-radius: 3px !important;
+        background: {th.get('accent', th['primary'])} !important;
     }}
     /* Calculate button: less chunky, no transform */
     div[data-testid="stHorizontalBlock"]:has(.calc-btn-anchor) button {{
@@ -500,6 +576,22 @@ def inject_css(theme: dict) -> None:
     .stTabs [aria-selected="true"] {{
         color: {th['primary']} !important;
         border-bottom: 2px solid {th['primary']} !important;
+    }}
+
+    /* Popover triggers (e.g. "Share link") aren't .stButton, so they fell back to
+       Streamlit's default dark button — black text on a dark fill (~1.2:1, unreadable
+       on light themes). Give them a quiet, theme-aware outline style. */
+    [data-testid="stPopover"] button {{
+        background-color: {th['surface']} !important;
+        color: {th['text']} !important;
+        border: {th['border_width']} solid {th['border']} !important;
+        border-radius: {th['input_radius']} !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
+    }}
+    [data-testid="stPopover"] button:hover {{
+        border-color: {th['primary']} !important;
+        color: {th['primary']} !important;
     }}
 
     .stButton > button {{
