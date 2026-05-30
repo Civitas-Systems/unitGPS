@@ -349,41 +349,6 @@ def render_filter_tabs(df_for_units: pd.DataFrame, theme: dict, do_ghg: bool = F
                     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
                     dynamic_multiselect("Category", "Category", df_for_units)
 
-                # GWP controls live here when GHG module is active.
-                if do_ghg:
-                    st.markdown(
-                        f"<div style='border-top:1px solid {theme['border']}; "
-                        f"margin: 14px 0 8px 0; padding-top: 10px;'>"
-                        f"<div style='font-size:0.85rem; color:{theme['secondary']} !important; "
-                        f"font-weight:500; margin-bottom:6px;'>"
-                        "GHG WEIGHTING (IPCC GWP)</div></div>",
-                        unsafe_allow_html=True,
-                    )
-                    # Narrow columns so dropdowns don't stretch full-width.
-                    g1, g2, _g_sp = st.columns([1, 1, 3])
-                    with g1:
-                        st.selectbox(
-                            "Assessment Report",
-                            options=["AR4", "AR5", "AR6"],
-                            key="gwp_report",
-                            help=(
-                                "Which IPCC Assessment Report's GWP values to use. "
-                                "AR4 = 2007, AR5 = 2014, AR6 = 2021. Different reports "
-                                "publish different GWPs for the same gases as the science evolves."
-                            ),
-                        )
-                    with g2:
-                        st.selectbox(
-                            "Time Horizon (yr)",
-                            options=["20", "100", "500"],
-                            key="gwp_horizon",
-                            help=(
-                                "Integration window for GWP. Shorter horizons emphasize "
-                                "short-lived gases (CH₄ over 20 yr ≈ 84; over 100 yr ≈ 28). "
-                                "100-year is the standard regulatory horizon."
-                            ),
-                        )
-
             elif g_name == "Location":
                 g1, g2 = st.columns(2)
                 with g1:

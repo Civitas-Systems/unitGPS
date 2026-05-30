@@ -342,118 +342,110 @@ mag_count = len(temp_df[temp_df["Set"] == "Magnitude Adjustment"])
 fuel_count = len(temp_df[temp_df["Set"] == "Chemical Properties"])
 ghg_count = len(temp_df[temp_df["Set"] == "Emission Factors"])
 
-st.markdown("<h3 style='margin-top: 5px; margin-bottom: 5px;'>Modules</h3>", unsafe_allow_html=True)
-m_cols = st.columns([2.2, 2.2, 2.2, 2.2, 1.2])
-with m_cols[0]:
-    st.markdown("<div class='modules-container-flag'></div>", unsafe_allow_html=True)
-    st.checkbox(f"🔄 Unit Conversions ({conv_count})", value=st.session_state.get("cb_mod_conv", True), key="cb_mod_conv")
-with m_cols[1]:
-    st.checkbox(f"📐 Magnitude Adjustments ({mag_count})", value=st.session_state.get("cb_mod_mag", True), key="cb_mod_mag")
-with m_cols[2]:
-    st.checkbox(f"⛽ Fuel Properties ({fuel_count})", value=st.session_state.get("cb_mod_fuel", True), key="cb_mod_fuel")
-with m_cols[3]:
-    st.checkbox(f"🌍 GHG Emissions ({ghg_count})", value=st.session_state.get("cb_mod_ghg", True), key="cb_mod_ghg")
-
-# --------------------------------------------------------------------------- #
-# Filter session_state defaults                                                #
-# --------------------------------------------------------------------------- #
+# Filter session_state defaults (must exist before any widget reads them)
 for col in COLS_TO_EXTRACT:
     if col not in st.session_state:
         st.session_state[col] = []
 
 # --------------------------------------------------------------------------- #
-# Temporal scope                                                               #
+# Three-column control row: Modules | Temporal Scope | Output options          #
 # --------------------------------------------------------------------------- #
+ctrl_mod, ctrl_temp, ctrl_out = st.columns([1.35, 1.3, 1.0], gap="large")
 
-st.markdown("<h3 style='margin-top: 15px; margin-bottom: 5px;'>Temporal Scope</h3>", unsafe_allow_html=True)
+with ctrl_mod:
+    st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Modules</h3>", unsafe_allow_html=True)
+    st.checkbox(f"🔄 Unit Conversions ({conv_count})", value=st.session_state.get("cb_mod_conv", True), key="cb_mod_conv")
+    st.checkbox(f"📐 Magnitude Adjustments ({mag_count})", value=st.session_state.get("cb_mod_mag", True), key="cb_mod_mag")
+    st.checkbox(f"⛽ Fuel Properties ({fuel_count})", value=st.session_state.get("cb_mod_fuel", True), key="cb_mod_fuel")
+    st.checkbox(f"🌍 GHG Emissions ({ghg_count})", value=st.session_state.get("cb_mod_ghg", True), key="cb_mod_ghg")
+    # GWP weighting reveals right under the GHG module when it's on, mirroring
+    # how the Temporal Scope inputs reveal under their radio.
+    if st.session_state.get("cb_mod_ghg", True):
+        st.markdown(
+            f"<div style='border-top:1px solid {theme['border']}; margin: 10px 0 6px 0; "
+            f"padding-top: 8px; font-size:0.72rem; color:{theme['secondary']} !important; "
+            f"font-weight:600; text-transform:uppercase; letter-spacing:0.4px;'>"
+            "GHG weighting (IPCC GWP)</div>",
+            unsafe_allow_html=True,
+        )
+        gw1, gw2 = st.columns(2)
+        with gw1:
+            st.selectbox(
+                "Assessment Report", options=["AR4", "AR5", "AR6"], key="gwp_report",
+                help="Which IPCC Assessment Report's GWP values to use (AR4 = 2007, AR5 = 2014, AR6 = 2021).",
+            )
+        with gw2:
+            st.selectbox(
+                "Time Horizon (yr)", options=["20", "100", "500"], key="gwp_horizon",
+                help="Integration window for GWP. 100-year is the standard regulatory horizon.",
+            )
 
-mode_temp = st.session_state.get("dy_mode_radio", "All Years")
-if mode_temp == "Specific Years":
-    col_radio, col_input = st.columns([7.5, 1.5])
-elif mode_temp == "Range":
-    col_radio, col_input = st.columns([7.0, 2.0])
-else:
-    col_radio, col_input = st.columns([7.5, 1.5])
-
-with col_radio:
+with ctrl_temp:
+    st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Temporal Scope</h3>", unsafe_allow_html=True)
     mode = st.radio(
         "Temporal Scope",
         ["All Years", "Most Recent Global", "Most Recent per Path", "Specific Years", "Range"],
-        horizontal=True,
         label_visibility="collapsed",
         key="dy_mode_radio",
     )
     st.session_state["dy_mode"] = mode
 
-dy_values: list = []
-dy_mode_engine = "all"
-
-with col_input:
+    dy_values = []
+    dy_mode_engine = "all"
     if mode == "Specific Years":
         year_opts = get_options(df_for_units, "Data Year")
         st.session_state["Data Year"] = st.multiselect(
-            "Select Exact Years",
-            options=year_opts,
-            placeholder=f"{len(year_opts)} options",
-            label_visibility="collapsed",
+            "Select Exact Years", options=year_opts,
+            placeholder=f"{len(year_opts)} options", label_visibility="collapsed",
         )
         dy_values = [float(v) for v in st.session_state["Data Year"]]
         dy_mode_engine = "exact"
     elif mode == "Range":
-        r1, r2 = st.columns(2)
         max_db_yr = int(combined_data["Data Year"].dropna().max()) if "Data Year" in combined_data else 2024
         min_db_yr = int(combined_data["Data Year"].dropna().min()) if "Data Year" in combined_data else 1960
         all_years = list(range(max_db_yr, min_db_yr - 1, -1))
-
-        default_start = max_db_yr - 4
-        default_end = max_db_yr
+        default_start, default_end = max_db_yr - 4, max_db_yr
         idx_start = all_years.index(default_start) if default_start in all_years else len(all_years) - 1
         idx_end = all_years.index(default_end) if default_end in all_years else 0
-
-        # Set session_state defaults BEFORE the widgets render so we can
-        # safely drop the conflicting index= argument.
         if st.session_state.get("start_yr_input") not in all_years:
             st.session_state["start_yr_input"] = all_years[idx_start]
         if st.session_state.get("end_yr_input") not in all_years:
             st.session_state["end_yr_input"] = all_years[idx_end]
+        r1, r2 = st.columns(2)
         with r1:
             start_yr = st.selectbox("From", options=all_years, key="start_yr_input", label_visibility="collapsed")
         with r2:
             end_yr = st.selectbox("To", options=all_years, key="end_yr_input", label_visibility="collapsed")
-
         dy_values = [float(start_yr), float(end_yr)]
         dy_mode_engine = "range"
-    else:
-        if mode == "Most Recent Global":
-            dy_mode_engine = "recent_global"
-        elif mode == "Most Recent per Path":
-            dy_mode_engine = "recent_edge"
+    elif mode == "Most Recent Global":
+        dy_mode_engine = "recent_global"
+    elif mode == "Most Recent per Path":
+        dy_mode_engine = "recent_edge"
+
+with ctrl_out:
+    st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Output options</h3>", unsafe_allow_html=True)
+    st.selectbox(
+        "Max paths",
+        options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 75, 100, "All"],
+        key="max_paths",
+        help="How many alternative conversion paths to compute and display.",
+    )
+    st.caption("Interactive chart + static/dynamic options land here next.")
 
 # --------------------------------------------------------------------------- #
-# Database filters tab group + Calculate button                                #
+# Database filters + Calculate                                                 #
 # --------------------------------------------------------------------------- #
-
 with st.container():
     st.markdown('<div class="db-filters-anchor"></div>', unsafe_allow_html=True)
-    title_col, calc_c1, calc_c2, calc_c3 = st.columns(
-        [4.6, 0.7, 1.0, 1.3], vertical_alignment="bottom"
-    )
+    title_col, calc_col = st.columns([5.0, 1.4], vertical_alignment="bottom")
     with title_col:
         st.markdown("<h3 style='margin-top:0px; margin-bottom:5px;'>Database Filters</h3>", unsafe_allow_html=True)
-    with calc_c1:
+    with calc_col:
         st.markdown(
-            "<div style='text-align: right; margin-bottom: 12px;'>"
-            "<span class='calc-btn-anchor'>MAX PATHS</span></div>",
+            "<div style='text-align:right;'><span class='calc-btn-anchor'></span></div>",
             unsafe_allow_html=True,
         )
-    with calc_c2:
-        st.selectbox(
-            "Max Paths",
-            options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 75, 100, "All"],
-            key="max_paths",
-            label_visibility="collapsed",
-        )
-    with calc_c3:
         run_btn = st.button("Calculate", type="primary", key="calc_btn_main", use_container_width=True)
 
     if run_btn:
