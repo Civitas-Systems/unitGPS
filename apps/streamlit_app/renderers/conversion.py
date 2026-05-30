@@ -10,7 +10,7 @@ from unitgps.engine import determine_conversion, format_sig_figs
 
 from ..export import audit_to_json, audit_to_markdown
 from ..formatting import format_audit_date, normalize_param_value
-from ..network_viz import render_network_figure
+from ..network_viz import render_network_figure, render_network_plotly
 from .stepper import render_hero_stepper
 
 logger = logging.getLogger(__name__)
@@ -595,15 +595,18 @@ def _render_single_path(
                 "Path 1 color. Each dimension (Energy, Weight, Length, etc.) "
                 "is a cluster; the path you ran is overlaid in bold."
             )
+            _viz_mode = st.session_state.get("viz_mode", "Interactive")
             try:
-                import matplotlib.pyplot as plt
-                fig = render_network_figure(
-                    graph_engine,
-                    highlight_paths=[data["route"]],
-                    figsize=(11, 11),
-                )
-                st.pyplot(fig, use_container_width=True)
-                plt.close(fig)  # release the figure so it doesn't leak across reruns
+                if _viz_mode == "Interactive":
+                    fig = render_network_plotly(graph_engine, highlight_paths=[data["route"]])
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    import matplotlib.pyplot as plt
+                    fig = render_network_figure(
+                        graph_engine, highlight_paths=[data["route"]], figsize=(11, 11),
+                    )
+                    st.pyplot(fig, use_container_width=True)
+                    plt.close(fig)
             except Exception as exc:  # noqa: BLE001
                 st.warning(f"Network view unavailable: {exc}")
 

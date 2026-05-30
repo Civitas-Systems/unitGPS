@@ -362,3 +362,120 @@ def render_network_figure(
     plt.axis("off")
     plt.tight_layout()
     return fig
+
+
+def render_network_plotly(
+    graph_engine,
+    highlight_paths=None,
+    path_colors=None,
+    *,
+    height: int = 620,
+    show_dimension_labels: bool = True,
+):
+    """Interactive Plotly version of :func:`render_network_figure`.
+
+    Hover any node for its unit + dimension; zoom, pan and drag. Reuses the same
+    cached spring layout so it lines up with the static figure. Returns a Plotly
+    ``Figure`` for ``st.plotly_chart``. Raises ``ImportError`` if plotly is
+    missing (callers wrap this and fall back to the static figure).
+    """
+    try:
+        import plotly.graph_objects as go
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError(
+            "plotly is required for the interactive network view "
+            "(pip install plotly>=5.18, or re-run run.bat)."
+        ) from exc
+
+    G, layout = compute_styled_graph_and_layout(graph_engine)
+    flat = _flatten_graph(G)
+
+    paths = highlight_paths or []
+    active_nodes: set = set()
+    for p in paths:
+        if p:
+            active_nodes.update(p)
+
+    traces = []
+
+    # Background edges (one None-separated trace) + dim nodes.
+    bx, by = [], []
+    for u, v in set((u, v) for u, v, _ in flat.edges(keys=True)):
+        if u in layout and v in layout:
+            (x0, y0), (x1, y1) = layout[u], layout[v]
+            bx += [x0, x1, None]
+            by += [y0, y1, None]
+    traces.append(go.Scatter(x=bx, y=by, mode="lines",
+                             line=dict(color="#9aa0a6", width=0.6),
+                             opacity=0.22, hoverinfo="skip", showlegend=False))
+
+    # Highlighted paths (reverse so Path 1 ends on top).
+    for i in range(len(paths) - 1, -1, -1):
+        p = paths[i]
+        if not p or len(p) < 2:
+            continue
+        if path_colors and i < len(path_colors):
+            color = path_colors[i]
+        else:
+            color = PATH_STYLE_CONFIG.get(f"Path {i + 1}", {"Color": "#1F77B4"})["Color"]
+        width = PATH_STYLE_CONFIG["Line"]["Base Width"] + i * 1.5
+        px, py = [], []
+        for a, b in zip(p, p[1:]):
+            if a in layout and b in layout:
+                (x0, y0), (x1, y1) = layout[a], layout[b]
+                px += [x0, x1, None]
+                py += [y0, y1, None]
+        traces.append(go.Scatter(x=px, y=py, mode="lines",
+                                 line=dict(color=color, width=width),
+                                 opacity=0.9, hoverinfo="skip", showlegend=False))
+
+    bgn = [n for n in flat.nodes() if n not in active_nodes and n in layout]
+    traces.append(go.Scatter(
+        x=[layout[n][0] for n in bgn], y=[layout[n][1] for n in bgn],
+        mode="markers", marker=dict(size=6, color="#aab", opacity=0.35),
+        text=[f"{n} | {flat.nodes[n].get('Unit Dimension', '')}" for n in bgn],
+        hoverinfo="text", showlegend=False))
+
+    if active_nodes:
+        an = [n for n in active_nodes if n in layout]
+        traces.append(go.Scatter(
+            x=[layout[n][0] for n in an], y=[layout[n][1] for n in an],
+            mode="markers+text",
+            marker=dict(size=15, color=[flat.nodes[n].get("Color", "#888") for n in an],
+                        line=dict(color="white", width=1.5)),
+            text=an, textposition="top center", textfont=dict(size=12, color="#e5e7eb"),
+            hovertext=[f"{n} | {flat.nodes[n].get('Unit Dimension', '')}" for n in an],
+            hoverinfo="text", showlegend=False))
+
+    fig = go.Figure(data=traces)
+
+    # Faint dotted "region" bubble per dimension cluster, so the groups stay
+    # delineated even as nodes spring around.
+    annotations, shapes = [], []
+    by_dim: dict = {}
+    for n, data in flat.nodes(data=True):
+        dim = data.get("Unit Dimension")
+        if dim and n in layout:
+            by_dim.setdefault(dim, []).append(layout[n])
+    for dim, ps in by_dim.items():
+        xs, ys = zip(*ps)
+        cx, cy = float(np.mean(xs)), float(np.mean(ys))
+        r = max((((x - cx) ** 2 + (y - cy) ** 2) ** 0.5 for x, y in ps), default=0.6) + 0.7
+        col = DIMENSIONS.get(dim, {}).get("Color", "#888888")
+        shapes.append(dict(
+            type="circle", xref="x", yref="y",
+            x0=cx - r, y0=cy - r, x1=cx + r, y1=cy + r,
+            line=dict(color=col, width=1.2, dash="dot"),
+            fillcolor=col, opacity=0.07, layer="below"))
+        if show_dimension_labels:
+            annotations.append(dict(
+                x=cx, y=cy + r - 0.2, text=dim, showarrow=False,
+                font=dict(size=13, color=col)))
+    fig.update_layout(
+        height=height, margin=dict(l=8, r=8, t=8, b=8),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False, scaleanchor="x", scaleratio=1),
+        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False, hovermode="closest", dragmode="pan",
+        shapes=shapes, annotations=annotations)
+    return fig

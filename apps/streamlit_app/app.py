@@ -352,7 +352,7 @@ for col in COLS_TO_EXTRACT:
 # --------------------------------------------------------------------------- #
 ctrl_mod, ctrl_temp, ctrl_out = st.columns([1.35, 1.3, 1.0], gap="large")
 
-with ctrl_mod:
+with ctrl_mod, st.container(border=True):
     st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Modules</h3>", unsafe_allow_html=True)
     st.checkbox(f"🔄 Unit Conversions ({conv_count})", value=st.session_state.get("cb_mod_conv", True), key="cb_mod_conv")
     st.checkbox(f"📐 Magnitude Adjustments ({mag_count})", value=st.session_state.get("cb_mod_mag", True), key="cb_mod_mag")
@@ -380,7 +380,7 @@ with ctrl_mod:
                 help="Integration window for GWP. 100-year is the standard regulatory horizon.",
             )
 
-with ctrl_temp:
+with ctrl_temp, st.container(border=True):
     st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Temporal Scope</h3>", unsafe_allow_html=True)
     mode = st.radio(
         "Temporal Scope",
@@ -423,7 +423,7 @@ with ctrl_temp:
     elif mode == "Most Recent per Path":
         dy_mode_engine = "recent_edge"
 
-with ctrl_out:
+with ctrl_out, st.container(border=True):
     st.markdown("<h3 style='margin-top: 5px; margin-bottom: 8px;'>Output options</h3>", unsafe_allow_html=True)
     st.selectbox(
         "Max paths",
@@ -431,7 +431,13 @@ with ctrl_out:
         key="max_paths",
         help="How many alternative conversion paths to compute and display.",
     )
-    st.caption("Interactive chart + static/dynamic options land here next.")
+    st.radio(
+        "Network view",
+        ["Interactive", "Static"],
+        key="viz_mode",
+        horizontal=True,
+        help="Interactive = hover, zoom & pan (Plotly). Static = a clean image to export (matplotlib).",
+    )
 
 # --------------------------------------------------------------------------- #
 # Database filters + Calculate                                                 #

@@ -22,7 +22,7 @@ import streamlit as st
 from unitgps.engine import determine_ghg_emissions, format_sig_figs
 
 from ..export import audit_to_json, audit_to_markdown
-from ..network_viz import GHG_PATH_COLORS, render_network_figure
+from ..network_viz import GHG_PATH_COLORS, render_network_figure, render_network_plotly
 from ..formatting import format_html_num, format_latex_num, normalize_param_value, sanitize_latex
 from .conversion import (
     STATIC_SETS,
@@ -518,15 +518,20 @@ def render_emissions_panel(
                         "graph. CO₂ in violet, CH₄ in green, N₂O in red — the "
                         "same accents used in the bar and per-gas cards above."
                     )
+                    _viz_mode = st.session_state.get("viz_mode", "Interactive")
                     try:
-                        import matplotlib.pyplot as plt
-                        fig = render_network_figure(
-                            graph_engine,
-                            highlight_paths=ghg_paths,
-                            path_colors=ghg_path_colors,
-                            figsize=(11, 11),
-                        )
-                        st.pyplot(fig, use_container_width=True)
-                        plt.close(fig)
+                        if _viz_mode == "Interactive":
+                            fig = render_network_plotly(
+                                graph_engine, highlight_paths=ghg_paths, path_colors=ghg_path_colors,
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                        else:
+                            import matplotlib.pyplot as plt
+                            fig = render_network_figure(
+                                graph_engine, highlight_paths=ghg_paths,
+                                path_colors=ghg_path_colors, figsize=(11, 11),
+                            )
+                            st.pyplot(fig, use_container_width=True)
+                            plt.close(fig)
                     except Exception as exc:  # noqa: BLE001
                         st.warning(f"Network view unavailable: {exc}")
