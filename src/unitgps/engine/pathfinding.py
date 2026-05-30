@@ -59,3 +59,28 @@ def convert_path_to_edge_tuples(
         return [list(zip(p, p[1:])) for p in path_nodes]
 
     return [list(zip(path_nodes, path_nodes[1:]))]
+
+
+def shortest_path_edges(G, source, target):
+    """Return the set of ``(u, v)`` edges that lie on SOME shortest path from
+    ``source`` to ``target``.
+
+    Two BFS passes (forward distances from ``source``, reverse distances to
+    ``target``): an edge ``(u, v)`` is on a shortest path iff
+    ``dist(source, u) + 1 + dist(v, target) == dist(source, target)``. Cheap —
+    O(V + E) — and works on any directed graph; parallel edges collapse since
+    the result is a set of node pairs. Empty set if a node is missing or there
+    is no path.
+    """
+    if not (G.has_node(source) and G.has_node(target)):
+        return set()
+    dist_from = nx.single_source_shortest_path_length(G, source)
+    if target not in dist_from:
+        return set()
+    dist_to = nx.single_source_shortest_path_length(G.reverse(copy=False), target)
+    total = dist_from[target]
+    return {
+        (u, v)
+        for u, v in G.edges()
+        if u in dist_from and v in dist_to and dist_from[u] + 1 + dist_to[v] == total
+    }

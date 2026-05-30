@@ -13,7 +13,11 @@ from .calculate import (
 from .data import DataLoader
 from .emissions import determine_conversion, determine_ghg_emissions, find_gwp
 from .graph import UnitGraph
-from .pathfinding import convert_path_to_edge_tuples, identify_conversion_path
+from .pathfinding import (
+    convert_path_to_edge_tuples,
+    identify_conversion_path,
+    shortest_path_edges,
+)
 
 __all__ = [
     "AmbiguityError",
@@ -26,5 +30,6 @@ __all__ = [
     "find_gwp",
     "format_sig_figs",
     "identify_conversion_path",
+    "shortest_path_edges",
     "is_valid_parameter",
 ]

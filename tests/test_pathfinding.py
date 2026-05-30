@@ -30,3 +30,33 @@ def test_convert_path_to_edge_tuples_multi() -> None:
 
 def test_convert_empty_path() -> None:
     assert convert_path_to_edge_tuples([]) == []
+
+
+def test_shortest_path_edges_picks_shortcut() -> None:
+    """Edges on the unique shortest path are returned; longer detours excluded."""
+    import networkx as nx
+    from unitgps.engine import shortest_path_edges
+
+    G = nx.DiGraph()
+    G.add_edge("A", "B"); G.add_edge("B", "C"); G.add_edge("A", "C"); G.add_edge("C", "D")
+    # A->C->D (len 2) beats A->B->C->D (len 3)
+    assert shortest_path_edges(G, "A", "D") == {("A", "C"), ("C", "D")}
+
+
+def test_shortest_path_edges_parallel_branches() -> None:
+    """Two equal-length shortest paths both contribute their edges."""
+    import networkx as nx
+    from unitgps.engine import shortest_path_edges
+
+    G = nx.DiGraph()
+    G.add_edge("S", "X"); G.add_edge("X", "T"); G.add_edge("S", "Y"); G.add_edge("Y", "T")
+    assert shortest_path_edges(G, "S", "T") == {("S", "X"), ("X", "T"), ("S", "Y"), ("Y", "T")}
+
+
+def test_shortest_path_edges_no_path_or_missing() -> None:
+    import networkx as nx
+    from unitgps.engine import shortest_path_edges
+
+    G = nx.DiGraph(); G.add_edge("A", "B"); G.add_node("Z")
+    assert shortest_path_edges(G, "A", "Z") == set()
+    assert shortest_path_edges(G, "missing", "B") == set()

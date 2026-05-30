@@ -40,7 +40,7 @@ URL_SAFE_KEYS: tuple[str, ...] = (
 FILTER_KEYS: tuple[str, ...] = (
     "Source-Chemical Category", "Source-Chemical Type",
     "Formula", "Property",
-    "Process1", "Process2", "Scope", "Category",
+    "Process1", "Process2", "Scope_raw", "Category",
     "Region", "Country", "State",
     "Agency", "Dataset", "Data Year",
 )

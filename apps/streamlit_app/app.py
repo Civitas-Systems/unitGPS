@@ -35,6 +35,7 @@ from unitgps.engine import DataLoader, UnitGraph  # noqa: E402
 from streamlit_app.filters import (  # noqa: E402
     COLS_TO_EXTRACT,
     apply_db_and_temporal_filters,
+    apply_pathway_scope,
     build_search_params,
     get_options,
     render_active_filter_chips,
@@ -140,9 +141,10 @@ if do_fuel:
 if do_mag:
     active_sets.append("Magnitude Adjustment")
 
-df_for_units = (
+df_modules = (
     combined_data[combined_data["Set"].isin(active_sets)] if active_sets else combined_data.iloc[0:0]
 )
+df_for_units = df_modules
 
 search_params_raw: dict = {}
 for col in COLS_TO_EXTRACT:
@@ -461,7 +463,12 @@ with st.container():
     # filter tabs as a scannable reminder of what's currently narrowing the search.
     render_active_filter_chips(theme)
 
-    render_filter_tabs(df_for_units, theme, do_ghg=do_ghg)
+    # Scope filter options to the chosen source->target pathway: only show
+    # filter values on a shortest conversion path (electricity MWh->kg hides
+    # coal/fuel chemical types). df_modules keeps reachability independent of
+    # db-filter picks; falls back to unscoped when there's no path.
+    df_for_filters = apply_pathway_scope(df_for_units, df_modules, source_unit, target_unit)
+    render_filter_tabs(df_for_filters, theme, do_ghg=do_ghg)
 
 # --------------------------------------------------------------------------- #
 # Build search_params for the engine                                           #

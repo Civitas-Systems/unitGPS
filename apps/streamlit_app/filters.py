@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from typing import Iterable, List
 
+import networkx as nx
 import pandas as pd
 import streamlit as st
+
+from unitgps.engine import shortest_path_edges
 
 # --------------------------------------------------------------------------- #
 # Constants                                                                    #
@@ -94,6 +97,43 @@ def apply_db_and_temporal_filters(
     return df[mask]
 
 
+def _reduced_pathway_graph(df: pd.DataFrame) -> "nx.DiGraph":
+    """Simple DiGraph of Denominator->Numerator unit pairs (parallel edges
+    merged) — small enough that shortest-path reachability is two cheap BFS."""
+    g = nx.DiGraph()
+    pairs = df[["Denominator", "Numerator"]].dropna()
+    g.add_edges_from(set(map(tuple, pairs.itertuples(index=False, name=None))))
+    return g
+
+
+def apply_pathway_scope(
+    df_to_scope: pd.DataFrame,
+    graph_df: pd.DataFrame,
+    source_unit: str | None,
+    target_unit: str | None,
+) -> pd.DataFrame:
+    """Narrow ``df_to_scope`` to rows that are edges on a SHORTEST source->target
+    conversion path, so the filter panel only offers pathway-relevant values
+    (an electricity MWh->kg pathway hides coal/fuel chemical types).
+
+    The reachability graph is built from ``graph_df`` (module-filtered data,
+    independent of the user's db-filter picks) so selecting a filter can't break
+    reachability. Falls back to ``df_to_scope`` unchanged when source/target are
+    unset, identical, missing, or unreachable, so the panel never blanks by
+    surprise.
+    """
+    if not source_unit or not target_unit or source_unit == target_unit:
+        return df_to_scope
+    edges = shortest_path_edges(_reduced_pathway_graph(graph_df), source_unit, target_unit)
+    if not edges:
+        return df_to_scope
+    keep = [
+        (d, n) in edges
+        for d, n in zip(df_to_scope["Denominator"], df_to_scope["Numerator"])
+    ]
+    return df_to_scope[keep]
+
+
 # --------------------------------------------------------------------------- #
 # UI helpers                                                                   #
 # --------------------------------------------------------------------------- #
@@ -116,7 +156,18 @@ def get_options(df_for_units: pd.DataFrame, col: str) -> list[str]:
         return []
     vals = filtered[col].dropna().unique()
     if col in ["Scope", "Data Year"]:
-        str_vals = {str(int(v)) for v in vals if str(v).replace(".0", "").isdigit()}
+        # Keep only integer-valued entries, formatted without a trailing .0
+        # (e.g. 2020.0 -> "2020"). Coerce numerically rather than string-munging
+        # so a value like "1.05" is skipped, not silently corrupted into "15"
+        # (and never fed to int() as a non-integer string, which would crash).
+        str_vals = set()
+        for v in vals:
+            try:
+                f = float(v)
+            except (TypeError, ValueError):
+                continue
+            if f.is_integer():
+                str_vals.add(str(int(f)))
     else:
         str_vals = {str(v).strip() for v in vals}
     return sorted([v for v in str_vals if v])
@@ -288,7 +339,15 @@ def render_filter_tabs(df_for_units: pd.DataFrame, theme: dict, do_ghg: bool = F
                     st.session_state["Scope_raw"] = [
                         s for s, b in [("1", s_c1), ("2", s_c2), ("3", s_c3)] if b
                     ]
-                    st.session_state["Scope"] = st.session_state["Scope_raw"]
+                    # The graph + DataFrame store Scope as numbers (1.0/2.0/3.0)
+                    # while the checkboxes yield string labels. Mirror to ints so
+                    # list-membership (engine) and DataFrame .isin() comparisons
+                    # match the numeric column (1 == 1.0), and chips still show "1"
+                    # not "1.0". Without this, picking a Scope dropped every
+                    # emission factor (string "1" never equals float 1.0).
+                    st.session_state["Scope"] = [
+                        int(s) for s in st.session_state["Scope_raw"]
+                    ]
                 with e2:
                     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
                     dynamic_multiselect("Category", "Category", df_for_units)
