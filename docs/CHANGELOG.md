@@ -2,13 +2,44 @@
 type: changelog
 status: current
 generation: Claude
-last_updated: 2026-05-25
+last_updated: 2026-05-30
 tags: [changelog, history, passes]
 ---
 
 # CHANGELOG
 
 A pass-by-pass record of what changed during the v0.5-Claude generation. Newest first.
+
+## Pass 11 — Hardening, accessibility & deploy prep (2026-05-30)
+
+- **11.1 Readable network-path labels.** The network view's path node labels were a hard-coded light grey (invisible on light themes); they now use the active theme's text colour so the units (e.g. `mmBTU -> ton -> g -> kg`) are legible on any theme and cross-reference against the step list. The static (matplotlib) render also stopped labelling *every* node — only the highlighted path + dimension names are labelled, so the path isn't buried. See [[Network visualization]], [[network_viz]].
+- **11.2 Reachability-scoped Source/Target pickers.** (See Pass 10.7 / [[Pathway-scoped filters]].)
+- **11.3 Accessibility.** Keyboard focus ring (`:focus-visible`), `prefers-reduced-motion` support, descriptive captions (alt-text) under the network charts, and an accessible, downloadable `st.dataframe` twin of the GHG calc table.
+- **11.4 Deploy prep + dependency fixes.** Added a root `requirements.txt` and `.streamlit/config.toml`; declared **matplotlib** (used by the Static render but previously undeclared) and bumped the Streamlit floor to `>=1.40` (for `st.segmented_control`). New beginner guide `DEPLOYMENT.md`; README stats refreshed.
+- **11.5 Repo hygiene + CI.** Added `.gitattributes` (line-ending normalization — kills the recurring `.spec` CRLF churn) and a GitHub Actions workflow running the engine test suite on every push. Three new tests pin the single-rule `filter_graph` behaviour. **47 tests pass.**
+
+## Pass 10 — Finalization: card UI + transparent GHG (2026-05-30)
+
+- **10.1 Group delineation + section headers.** `st.container(border=True)` panels now read as real cards (surface fill + theme-appropriate elevation that survives light themes, where surface ≈ background). Section headers (Source / Target / Modules / Temporal Scope / Output options / Database Filters) gained a bolder, larger style with a primary accent bar and a hairline rule. Targeting note: the bordered container carries no inline `border` style, so cards are matched via a `.ug-card-head` marker + `:has()`. See [[themes]].
+- **10.2 Inline Database Filters toolbar.** Replaced the filter **tabs** with an inline `st.segmented_control` in the header row — `Database Filters · [Resources][Process][Location][Data Source] · Calculate` on one line, chosen category's filters full-width below. Refactor in `filters.py`: `render_filter_tabs` split into [[filters.get_active_filter_groups]] + [[filters.render_filter_group]]; the non-selected groups still mount inside a `display:none` container so multiselect state persists across category switches.
+- **10.3 Transparent GHG calculation.** New `_render_ghg_calc_table` shows each gas as the equation it is — **Mass × GWP = CO₂e** — aligned side-by-side with share bars and a total, so the footprint is visible rather than trusted. The dense per-gas pathway/provenance cards moved into a collapsed expander. See [[GHG condensed panel]], [[renderers - emissions]].
+- **10.4 Sankey dropped.** The experimental pathway Sankey (added in Pass 9) drew every link at uniform width, so it carried no quantity — removed entirely (the Diagram radio, both renderers' branches, and `render_pathway_sankey`/`_hex_to_rgba` in `network_viz.py`). Output options is now just Max paths · Network render (Interactive/Static) · Colour-blind-safe.
+- **10.5 Theme contrast pass.** Objective WCAG audit of all 13 themes. Fixed the unreadable Share-link **popover** button (black-on-dark ~1.2:1 → themed outline), darkened Earthy Zen's terracotta labels (3.3 → ~4.8:1), gave Neo-Brutalism a dark section accent (pink was 1.3:1 on yellow). Max-paths dropdown width capped.
+- **10.7 Reachability-scoped Source/Target pickers.** The Source/Target dimension *and* unit dropdowns now use the same dimension-reachability scoping as the Database Filters (`dimension_reach` in `filters.py`): the target only offers dimensions/units a source can reach (Area -> Area only); under GHG (target = Weight) the source only offers dimensions that can reach Weight. See [[Pathway-scoped filters]].
+- **10.6 Zero-value guard.** A `0` starting value now shows a hint instead of silently emitting all-zero results. Layout: tightened the Temporal↔Output column spacing. 44/44 tests pass.
+
+## Pass 9 — Interactive output visualization (2026-05-29)
+
+- **9.1 Plotly network.** Added `render_network_plotly` — hover/zoom/pan version of the network view with per-dimension "region bubble" shapes. A **Network render: Interactive / Static** toggle (`viz_mode`) picks Plotly vs the matplotlib image.
+- **9.2 Colour-blind-safe GHG palette.** `ghg_palette(colorblind)` + a Colour-blind-safe toggle swap the green/red gas pair for blue/orange/purple. One palette drives the bar, table and network overlay.
+- **9.3 Interactive GHG bar.** `_render_ghg_bar_plotly` complements the static HTML stacked bar. (An experimental pathway Sankey was also added here and later removed — see Pass 10.4.)
+
+## Pass 8 — Engine + filter-logic overhaul (2026-05-29)
+
+- **8.1 One filter rule.** Rewrote [[UnitGraph.filter_graph]] (and its pandas mirror [[filters.apply_db_and_temporal_filters]]) to a single rule: **infrastructure (Unit Conversions / Magnitude Adjustments) always passes; every other edge must strictly match each selected filter, where a blank value EXCLUDES; Data Year treats a blank year as a wildcard.** Replaced the old per-rule Unit-Conversion exemption + Chemical-Properties carve-out. Fixes electricity pathways offering Anthracite, eGRID not partitioning out fuels, etc.
+- **8.2 Pathway-scoped filter options.** New `apply_pathway_scope` + `_dimension_reach` scope the filter *dropdowns* to the source→target **dimensional** pathway (keep every unit of any reachable dimension, not just units with a literal edge). See [[Pathway-scoped filters]].
+- **8.3 GHG must traverse an emission factor.** New [[shortest_paths_via_edge_set]] (+ [[shortest_path_edges]]) constrains GHG routes through a real EF edge via `_is_emission_factor_edge`, so a gas can't report a non-emission unit conversion. [[determine_ghg_emissions]] updated.
+- **8.4 Robustness + layout.** `calculate_conversion_factor` returns `[]` (not `None`) on empty input; `data.py` drops zero-value rows before reciprocal inversion. Controls moved to a 3-column layout (Modules | Temporal Scope | Output options); AR Report + Time Horizon relocated under the GHG module; module/GHG toggles gate their outputs.
 
 ## Pass 7 — Network visualization (2026-05-25)
 

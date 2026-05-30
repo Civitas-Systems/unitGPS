@@ -1,0 +1,10 @@
+# Runtime dependencies for the Streamlit app (used by Streamlit Community Cloud).
+# Mirrors pyproject.toml's core + [streamlit] extra. The app self-bootstraps
+# src/ and apps/ onto sys.path, so the package itself is not pip-installed.
+streamlit>=1.40
+pandas>=2.0
+networkx>=3.0
+plotly>=5.18
+matplotlib>=3.7
+openpyxl>=3.1
+pyarrow>=14.0

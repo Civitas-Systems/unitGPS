@@ -626,6 +626,23 @@ def inject_css(theme: dict) -> None:
         color: {th['secondary']} !important;
         font-weight: 700;
     }}
+    /* ---- Accessibility ---- */
+    /* A clear keyboard focus ring (Streamlit's default is easy to miss). Only
+       shows for keyboard navigation (focus-visible), never on mouse click. */
+    *:focus-visible {{
+        outline: 2px solid {th['primary']} !important;
+        outline-offset: 2px !important;
+        border-radius: 3px;
+    }}
+    /* Honor the OS "reduce motion" setting — kill transitions/animations. */
+    @media (prefers-reduced-motion: reduce) {{
+        *, *::before, *::after {{
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+            scroll-behavior: auto !important;
+        }}
+    }}
 </style>
 """,
         unsafe_allow_html=True,

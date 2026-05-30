@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 
 import streamlit as st
+import pandas as pd
 
 from unitgps.engine import determine_ghg_emissions, format_sig_figs
 
@@ -618,6 +619,23 @@ def render_emissions_panel(
             )
             _render_ghg_calc_table(res["results"], total_co2e, gas_colors, target_unit, theme)
 
+            # Accessible twin of the table above: st.dataframe is keyboard-
+            # navigable, screen-reader friendly, and has a built-in CSV download.
+            _label = {"CO2": "CO\u2082", "CH4": "CH\u2084", "N2O": "N\u2082O"}
+            _rows = []
+            for _g in ("CO2", "CH4", "N2O"):
+                _d = res["results"].get(_g, {}) or {}
+                _co2e = _d.get("CO2e")
+                _rows.append({
+                    "Gas": _label[_g],
+                    f"Mass ({target_unit})": _d.get("Mass"),
+                    "GWP": _d.get("GWP"),
+                    f"CO\u2082e ({target_unit})": _co2e,
+                    "Share %": round(_co2e / total_co2e * 100, 2) if (total_co2e and _co2e) else 0.0,
+                })
+            with st.expander("Data table (screen-reader friendly \u00b7 downloadable)", expanded=False):
+                st.dataframe(pd.DataFrame(_rows), use_container_width=True, hide_index=True)
+
             # ── Per-gas pathway & provenance (where each Mass comes from) ──
             dominant_ghg = max(
                 ("CO2", "CH4", "N2O"),
@@ -656,17 +674,21 @@ def render_emissions_panel(
             if ghg_paths:
                 _viz_mode = st.session_state.get("viz_mode", "Interactive")
                 with st.expander("🌐 Show GHG network view", expanded=False):
+                    st.caption(
+                        "The full conversion graph with each greenhouse gas's "
+                        "pathway highlighted in its colour (CO\u2082, CH\u2084, N\u2082O)."
+                    )
                     try:
                         if _viz_mode == "Interactive":
                             st.plotly_chart(
                                 render_network_plotly(graph_engine, highlight_paths=ghg_paths,
-                                                      path_colors=ghg_path_colors),
+                                                      path_colors=ghg_path_colors, label_color=theme["text"]),
                                 use_container_width=True)
                         else:
                             import matplotlib.pyplot as plt
                             fig = render_network_figure(
                                 graph_engine, highlight_paths=ghg_paths,
-                                path_colors=ghg_path_colors, figsize=(11, 11),
+                                path_colors=ghg_path_colors, figsize=(11, 11), label_color=theme["text"],
                             )
                             st.pyplot(fig, use_container_width=True)
                             plt.close(fig)

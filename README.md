@@ -5,9 +5,10 @@ Graph-based universal unit converter and GHG-emissions calculator. This folder i
 ## Status
 
 - ✅ **Engine** ported, ~700 lines across 5 modules.
-- ✅ **Tests** — 30 pytest smoke tests passing in ~2s.
+- ✅ **Tests** — 47 pytest smoke tests passing in ~3s (enforced on every push via GitHub Actions CI).
 - ✅ **Streamlit UI** ported, ~1,900 lines decomposed across 7 modules (down from a 1,290-line monolith).
-- ✅ **Documentation** — 53 Obsidian-formatted pages covering every function. See [`docs/_MOC.md`](docs/_MOC.md).
+- ✅ **Documentation** — 60+ Obsidian-formatted pages covering every function. See [`docs/_MOC.md`](docs/_MOC.md).
+- ✅ **Deploy-ready** — root `requirements.txt`, `.streamlit/config.toml`, and a step-by-step guide. See [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 See [`docs/architecture.md`](docs/architecture.md) for the design rationale and remaining cleanup checklist.
 
@@ -24,7 +25,7 @@ v0.5-Claude/
 │   ├── react_app/          Planned: FastAPI backend + React frontend
 │   ├── htmx_app/           Planned: lightweight web variant
 │   └── desktop_app/        Planned: standalone .exe (pywebview or PyQt)
-├── tests/                  pytest smoke tests for the engine (5 files, 30 tests)
+├── tests/                  pytest smoke tests for the engine (6 files, 47 tests)
 ├── requirements/           Per-variant dependency lists
 ├── scripts/                Project-wide maintenance scripts (NOT per-variant launchers)
 └── docs/                   Concept + reference docs (Obsidian vault)
@@ -53,6 +54,14 @@ cd v0.5-Claude
 ```
 
 (Or, equivalently, with the venv activated: `pytest`.)
+
+## Deploy online (Streamlit Community Cloud)
+
+The repo is deploy-ready: a root `requirements.txt`, committed data files, a
+self-bootstrapping import path, and no required secrets. To put it online for free,
+point Streamlit Community Cloud at `apps/streamlit_app/app.py` on the `main` branch.
+
+Full walkthrough: [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ## Isolation from older generations
 

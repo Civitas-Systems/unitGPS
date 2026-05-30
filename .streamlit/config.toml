@@ -1,0 +1,16 @@
+# Streamlit configuration for the deployed UnitGPS app.
+#
+# The app injects its own per-theme CSS (apps/streamlit_app/themes.py), so these
+# native-theme values only control the brief initial paint *before* that CSS
+# loads. They're matched to the default "Obsidian" theme so there's no flash of
+# light UI on first load.
+
+[theme]
+base = "dark"
+primaryColor = "#8B5CF6"
+backgroundColor = "#18181B"
+secondaryBackgroundColor = "#1E1E1E"
+textColor = "#E5E7EB"
+
+[browser]
+gatherUsageStats = false

@@ -37,6 +37,7 @@ from streamlit_app.filters import (  # noqa: E402
     apply_db_and_temporal_filters,
     apply_pathway_scope,
     build_search_params,
+    dimension_reach,
     get_active_filter_groups,
     get_options,
     render_active_filter_chips,
@@ -193,15 +194,16 @@ if do_ghg:
             st.session_state["target_unit_sb"] = None
 
 
-def get_units_for_dim_local(dim):
+def get_units_for_dim_local(dim, fallback_dims=None):
     if dim:
         valid = [u for u, attr in node_attrs.items() if attr.get("Unit Dimension") == dim]
         return sorted(valid) if valid else available_units
-    valid_set = set(available_units)
-    for u, attr in node_attrs.items():
-        if attr.get("Unit Dimension") in available_dims:
-            valid_set.add(u)
-    return sorted(valid_set)
+    # No specific dimension picked yet -> offer units of the *reachable*
+    # dimensions only (fallback_dims), so the unit list narrows in lockstep with
+    # the dimension list. Falls back to every available dimension when unscoped.
+    dims_allowed = set(fallback_dims) if fallback_dims is not None else set(available_dims)
+    valid = [u for u in available_units if node_attrs.get(u, {}).get("Unit Dimension") in dims_allowed]
+    return sorted(valid) if valid else available_units
 
 
 # --------------------------------------------------------------------------- #
@@ -252,6 +254,26 @@ with h_theme:
 # Source / Target setup                                                        #
 # --------------------------------------------------------------------------- #
 
+# Reachability-scope the Source/Target dimension pickers so you can only pick a
+# target a source can reach (and, when GHG forces target=Weight, only a source
+# that can reach Weight). Dimension-level, on the active-module graph — same
+# philosophy as the Database-Filters pathway scoping.
+_src_dim_cur = st.session_state.get("source_dim")
+_tgt_dim_cur = "Weight" if do_ghg else st.session_state.get("target_dim")
+_reach_from_src, _reach_to_tgt = dimension_reach(df_modules, node_attrs, _src_dim_cur, _tgt_dim_cur)
+src_dim_opts = (
+    [d for d in available_dims if _reach_to_tgt is None or d in _reach_to_tgt]
+    if do_ghg else list(available_dims)
+)
+if not src_dim_opts:
+    src_dim_opts = list(available_dims)
+tgt_dim_opts = (
+    ["Weight"] if do_ghg
+    else [d for d in available_dims if _reach_from_src is None or d in _reach_from_src]
+)
+if not tgt_dim_opts:
+    tgt_dim_opts = list(available_dims)
+
 col_src, col_arr, col_tgt = st.columns([1, 0.1, 1])
 
 with col_src:
@@ -262,17 +284,17 @@ with col_src:
         )
         s1, s2, s3 = st.columns([2, 3, 3])
         with s3:
-            if st.session_state.get("source_dim") not in available_dims:
+            if st.session_state.get("source_dim") not in src_dim_opts:
                 st.session_state["source_dim"] = None
             source_dim = st.selectbox(
-                f"Dimension ({len(available_dims)})",
-                options=available_dims,
+                f"Dimension ({len(src_dim_opts)})",
+                options=src_dim_opts,
                 key="source_dim",
                 placeholder="All Dimensions",
                 on_change=sync_callbacks["source_unit"],
             )
         with s2:
-            s_opts = get_units_for_dim_local(source_dim)
+            s_opts = get_units_for_dim_local(source_dim, fallback_dims=src_dim_opts)
             if st.session_state.get("source_unit_sb") not in s_opts:
                 st.session_state["source_unit_sb"] = None
             source_unit = st.selectbox(
@@ -300,7 +322,7 @@ with col_tgt:
         )
         t1, t2, t3 = st.columns([2, 3, 3])
         with t3:
-            t_dim_opts = ["Weight"] if do_ghg else available_dims
+            t_dim_opts = tgt_dim_opts
             if st.session_state.get("target_dim") not in t_dim_opts:
                 st.session_state["target_dim"] = "Weight" if do_ghg else None
             target_dim = st.selectbox(
@@ -317,7 +339,7 @@ with col_tgt:
                 if not t_opts:
                     t_opts = [u for u, attr in node_attrs.items() if attr.get("Unit Dimension") == "Weight"]
             else:
-                t_opts = get_units_for_dim_local(target_dim)
+                t_opts = get_units_for_dim_local(target_dim, fallback_dims=tgt_dim_opts)
             if st.session_state.get("target_unit_sb") not in t_opts:
                 st.session_state["target_unit_sb"] = None
             target_unit = st.selectbox(

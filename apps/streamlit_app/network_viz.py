@@ -240,7 +240,7 @@ def _flatten_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
 # --------------------------------------------------------------------------- #
 
 
-def _draw_background_layer(flat: nx.MultiDiGraph, layout: dict, bg: dict, active_nodes: set) -> None:
+def _draw_background_layer(flat: nx.MultiDiGraph, layout: dict, bg: dict, active_nodes: set, show_labels: bool = False) -> None:
     """Draw dimmed background edges + labels for nodes NOT on a highlighted path."""
     nx.draw_networkx_edges(
         flat, layout,
@@ -249,14 +249,18 @@ def _draw_background_layer(flat: nx.MultiDiGraph, layout: dict, bg: dict, active
         arrows=True, arrowstyle="-|>", arrowsize=10,
         alpha=bg["Edge Alpha"],
     )
-    bg_nodes = [n for n in flat.nodes() if n not in active_nodes]
-    nx.draw_networkx_labels(
-        flat, layout,
-        labels={n: n for n in bg_nodes},
-        font_family="sans-serif",
-        font_size=bg["Label Size"],
-        alpha=bg["Label Alpha"],
-    )
+    # Per-node background labels are off by default — labelling all ~100 nodes
+    # buries the path. Dimension centroids + the highlighted path carry the
+    # context instead. Pass show_labels=True to restore the full label cloud.
+    if show_labels:
+        bg_nodes = [n for n in flat.nodes() if n not in active_nodes]
+        nx.draw_networkx_labels(
+            flat, layout,
+            labels={n: n for n in bg_nodes},
+            font_family="sans-serif",
+            font_size=bg["Label Size"],
+            alpha=bg["Label Alpha"],
+        )
 
 
 def _draw_highlighted_paths(
@@ -288,7 +292,7 @@ def _draw_highlighted_paths(
         )
 
 
-def _draw_active_nodes(flat: nx.MultiDiGraph, layout: dict, active_nodes: set) -> None:
+def _draw_active_nodes(flat: nx.MultiDiGraph, layout: dict, active_nodes: set, label_color: str = "#222222") -> None:
     """Draw highlighted nodes + bold labels on top of everything else."""
     if not active_nodes:
         return
@@ -310,6 +314,7 @@ def _draw_active_nodes(flat: nx.MultiDiGraph, layout: dict, active_nodes: set) -
         font_family="sans-serif",
         font_size=cfg["Label Size"],
         font_weight=cfg["Label Weight"],
+        font_color=label_color,
     )
 
 
@@ -342,6 +347,8 @@ def render_network_figure(
     *,
     figsize: Tuple[float, float] = (12, 12),
     show_dimension_labels: bool = True,
+    label_color: str = "#222222",
+    label_background: bool = False,
 ):
     """Render the full conversion network with optional highlighted paths.
 
@@ -366,9 +373,9 @@ def render_network_figure(
         if p:
             active_nodes.update(p)
 
-    _draw_background_layer(flat, layout, bg, active_nodes)
+    _draw_background_layer(flat, layout, bg, active_nodes, show_labels=label_background)
     _draw_highlighted_paths(flat, layout, paths, colors=path_colors)
-    _draw_active_nodes(flat, layout, active_nodes)
+    _draw_active_nodes(flat, layout, active_nodes, label_color=label_color)
     if show_dimension_labels:
         _draw_dimension_centroids(layout, flat)
 
@@ -384,6 +391,7 @@ def render_network_plotly(
     *,
     height: int = 620,
     show_dimension_labels: bool = True,
+    label_color: str = "#e5e7eb",
 ):
     """Interactive Plotly version of :func:`render_network_figure`.
 
@@ -456,7 +464,7 @@ def render_network_plotly(
             mode="markers+text",
             marker=dict(size=15, color=[flat.nodes[n].get("Color", "#888") for n in an],
                         line=dict(color="white", width=1.5)),
-            text=an, textposition="top center", textfont=dict(size=12, color="#e5e7eb"),
+            text=an, textposition="top center", textfont=dict(size=12.5, color=label_color),
             hovertext=[f"{n} | {flat.nodes[n].get('Unit Dimension', '')}" for n in an],
             hoverinfo="text", showlegend=False))
 

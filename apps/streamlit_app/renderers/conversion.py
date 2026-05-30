@@ -591,15 +591,16 @@ def _render_single_path(
     if graph_engine is not None and data.get("route"):
         _viz_mode = st.session_state.get("viz_mode", "Interactive")
         with st.expander("🌐 Show network view", expanded=False):
+            st.caption("The full unit-conversion graph with this result's path highlighted.")
             try:
                 if _viz_mode == "Interactive":
                     st.plotly_chart(
-                        render_network_plotly(graph_engine, highlight_paths=[data["route"]]),
+                        render_network_plotly(graph_engine, highlight_paths=[data["route"]], label_color=theme["text"]),
                         use_container_width=True)
                 else:
                     import matplotlib.pyplot as plt
                     fig = render_network_figure(
-                        graph_engine, highlight_paths=[data["route"]], figsize=(11, 11),
+                        graph_engine, highlight_paths=[data["route"]], figsize=(11, 11), label_color=theme["text"],
                     )
                     st.pyplot(fig, use_container_width=True)
                     plt.close(fig)

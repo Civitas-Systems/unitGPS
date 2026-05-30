@@ -147,6 +147,40 @@ def get_filtered_df(df_for_units: pd.DataFrame, exclude_col: str | None = None) 
     return temp
 
 
+def dimension_digraph(graph_df: pd.DataFrame, node_attrs: dict) -> "nx.DiGraph":
+    """Dimension-reduced DiGraph: nodes are Unit Dimensions, with an edge
+    ``dim(a) -> dim(b)`` whenever any unit edge ``a -> b`` crosses those two
+    dimensions. Reachability on this tiny graph answers "which dimensions can a
+    given dimension reach" in O(dims), independent of the ~5k unit edges.
+    """
+    dim_of = lambda u: node_attrs.get(u, {}).get("Unit Dimension")
+    g = nx.DiGraph()
+    for a, b in graph_df[["Denominator", "Numerator"]].dropna().itertuples(index=False, name=None):
+        da, db = dim_of(a), dim_of(b)
+        if da and db:
+            g.add_edge(da, db)
+    return g
+
+
+def dimension_reach(graph_df: pd.DataFrame, node_attrs: dict, source_dim, target_dim):
+    """``(reachable_from_source, can_reach_target)`` dimension sets on the
+    dimension-reduced graph. Each is ``None`` when its dimension is unset (= no
+    constraint), else a set that always includes the dimension itself.
+
+    Used to scope the Source/Target dimension pickers so you can only pick a
+    target a source can actually reach (Area reaches only Area; Energy reaches
+    Weight when an emission-factor path is in the active modules).
+    """
+    g = dimension_digraph(graph_df, node_attrs)
+    from_src = None
+    if source_dim:
+        from_src = {source_dim} | (nx.descendants(g, source_dim) if source_dim in g else set())
+    to_tgt = None
+    if target_dim:
+        to_tgt = {target_dim} | (nx.ancestors(g, target_dim) if target_dim in g else set())
+    return from_src, to_tgt
+
+
 def get_options(df_for_units: pd.DataFrame, col: str) -> list[str]:
     filtered = get_filtered_df(df_for_units, exclude_col=col)
     if col not in filtered.columns:

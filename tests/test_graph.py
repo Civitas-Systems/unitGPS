@@ -38,3 +38,44 @@ def test_get_nodes_by_dimension(graph) -> None:
     weights = graph.get_nodes_by_dimension("Weight")
     assert "kg" in weights
     assert "g" in weights
+
+
+# --- The single filter rule (2026-05-30 rewrite): infrastructure always passes;
+#     every other edge strictly matches each filter (blank EXCLUDES); a blank
+#     Data Year is a wildcard. ---
+
+INFRA_SETS = ("Unit Conversion", "Unit Conversions", "Magnitude Adjustment")
+
+
+def test_filter_graph_infrastructure_always_passes(graph, empty_search_params) -> None:
+    """A filter matching no provenance still keeps infrastructure edges, and ONLY
+    those — no emission-factor/chemical edge sneaks past a non-matching filter."""
+    params = dict(empty_search_params)
+    params["Agency"] = ["NO_SUCH_AGENCY_XYZ"]
+    F = graph.filter_graph(params, include_emission_factors=True)
+    sets_seen = {d.get("Set") for _, _, d in F.edges(data=True)}
+    assert sets_seen & set(INFRA_SETS), "infrastructure was dropped"
+    non_infra = [d for _, _, d in F.edges(data=True) if d.get("Set") not in INFRA_SETS]
+    assert non_infra == [], "a provenance edge wrongly survived a non-matching Agency filter"
+
+
+def test_filter_graph_blank_value_excludes(graph, empty_search_params) -> None:
+    """Strict match: a provenance edge that is blank in the filtered column is
+    excluded (the old Chemical-Properties carve-out is gone)."""
+    params = dict(empty_search_params)
+    params["Source-Chemical Type"] = ["Anthracite"]
+    F = graph.filter_graph(params, include_emission_factors=True)
+    for _, _, d in F.edges(data=True):
+        if d.get("Set") in INFRA_SETS:
+            continue  # infrastructure is exempt
+        val = d.get("Source-Chemical Type")
+        assert val is not None and str(val).strip() != "", "a blank-valued edge slipped a strict filter"
+
+
+def test_filter_graph_blank_year_is_wildcard(graph) -> None:
+    """An edge with no Data Year survives an exact-year filter, so infrastructure
+    (which carries no year) is never dropped by a temporal filter."""
+    params = {"Data Year": {"mode": "exact", "values": [1901]}}  # matches no real vintage
+    F = graph.filter_graph(params, include_emission_factors=False)
+    sets_seen = {d.get("Set") for _, _, d in F.edges(data=True)}
+    assert "Unit Conversion" in sets_seen, "blank-year infrastructure was dropped by a year filter"
