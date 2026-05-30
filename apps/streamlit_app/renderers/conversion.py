@@ -22,6 +22,22 @@ SOURCE_KEYS = ("Agency", "Dataset", "Data Year", "Version", "Updated", "Release 
 STATIC_SETS = {"Unit Conversion", "Unit Conversions", "Magnitude Adjustment"}
 
 
+def _chosen_edge(step: dict) -> dict:
+    """Return the parallel edge actually used in the calculation.
+
+    Honors the user's edge pick (``chosen_edge_idx``) so on-screen cards match
+    both the computed result and the Markdown export. Falls back to the first
+    edge (the engine default) when the index is missing or out of range.
+    """
+    edges = step.get("edges") or []
+    if not edges:
+        return {}
+    idx = step.get("chosen_edge_idx", 0)
+    if not isinstance(idx, int) or idx < 0 or idx >= len(edges):
+        idx = 0
+    return edges[idx]
+
+
 # --- Step-type styling ------------------------------------------------------ #
 # Unit Conversion + Magnitude Adjustment share one visual treatment because
 # they're both static infrastructure (the user's words). Chemical Properties
@@ -313,8 +329,8 @@ def _render_edge_picker(step: dict, path_idx: int, theme: dict) -> None:
 def _render_step_card(step: dict, theme: dict, step_num: int, total_steps: int, path_idx: int = 0) -> None:
     """Render one audit step: colored step header + grouped body + attribution footer."""
     s, t = step["source"], step["target"]
-    edge = step["edges"][0]
-    val = edge["value"]
+    edge = _chosen_edge(step)
+    val = edge.get("value", 1.0)
     set_name = edge.get("set", "—")
     style = _set_style(set_name, theme)
     is_static = (set_name or "").strip() in STATIC_SETS

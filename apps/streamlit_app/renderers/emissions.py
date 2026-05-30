@@ -27,6 +27,7 @@ from ..formatting import format_html_num, format_latex_num, normalize_param_valu
 from .conversion import (
     STATIC_SETS,
     _build_attribution,
+    _chosen_edge,
     _render_panel_header,
 )
 
@@ -188,7 +189,7 @@ def _render_per_gas_compact_card(
     ef_html = ""
     prov_html = ""
     if ef_step:
-        edge = ef_step["edges"][0]
+        edge = _chosen_edge(ef_step)
         ef_val = format_sig_figs(edge["value"], 4)
         params = edge.get("parameters", {}) or {}
         sources = edge.get("source", {}) or {}
