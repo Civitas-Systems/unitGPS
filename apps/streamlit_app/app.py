@@ -432,11 +432,23 @@ with ctrl_out, st.container(border=True):
         help="How many alternative conversion paths to compute and display.",
     )
     st.radio(
-        "Network view",
+        "Diagram",
+        ["Network", "Sankey"],
+        key="graph_viz",
+        horizontal=True,
+        help="Network = the dimension graph with your path highlighted. Sankey = the path as a left-to-right flow.",
+    )
+    st.radio(
+        "Network render",
         ["Interactive", "Static"],
         key="viz_mode",
         horizontal=True,
         help="Interactive = hover, zoom & pan (Plotly). Static = a clean image to export (matplotlib).",
+    )
+    st.checkbox(
+        "Colour-blind-safe colours",
+        key="cb_safe",
+        help="Switches the GHG palette to blue / orange / purple so the gases stay distinguishable for colour-blind viewers (replaces the green/red pair).",
     )
 
 # --------------------------------------------------------------------------- #

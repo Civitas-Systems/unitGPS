@@ -105,6 +105,19 @@ GHG_PATH_COLORS: Dict[str, str] = {
 }
 
 
+GHG_PALETTES: Dict[str, Dict[str, str]] = {
+    "default": {"CO2": "#8B5CF6", "CH4": "#10b981", "N2O": "#ef4444"},
+    # Okabe-Ito-derived: stays distinguishable under deuteranopia / protanopia.
+    "colorblind": {"CO2": "#0072B2", "CH4": "#E69F00", "N2O": "#CC79A7"},
+}
+
+
+def ghg_palette(colorblind: bool = False) -> Dict[str, str]:
+    """CO2 / CH4 / N2O colour map. Colour-blind-safe (blue / orange / purple)
+    when ``colorblind`` is True, else the default violet / green / red."""
+    return dict(GHG_PALETTES["colorblind" if colorblind else "default"])
+
+
 # --------------------------------------------------------------------------- #
 # Layout (spring-around-fixed-dimensions)                                       #
 # --------------------------------------------------------------------------- #
@@ -478,4 +491,52 @@ def render_network_plotly(
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False, hovermode="closest", dragmode="pan",
         shapes=shapes, annotations=annotations)
+    return fig
+
+
+def _hex_to_rgba(hexcol: str, alpha: float = 0.6) -> str:
+    """Convert a #rrggbb hex string to an rgba() string Plotly's Sankey accepts."""
+    h = str(hexcol).lstrip("#")
+    if len(h) == 6:
+        try:
+            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            return f"rgba({r},{g},{b},{alpha})"
+        except ValueError:
+            pass
+    return "rgba(127,119,221,0.6)"
+
+
+def render_pathway_sankey(paths, path_colors=None, *, height: int = 420):
+    """Interactive Plotly Sankey of one or more conversion paths.
+
+    Units become nodes, each step a link. For a single conversion it reads as a
+    left-to-right flow; for the three GHG gas-paths the shared trunk and the
+    branch points are obvious. Raises ImportError if plotly is missing.
+    """
+    try:
+        import plotly.graph_objects as go
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError("plotly is required for the Sankey view.") from exc
+
+    paths = [p for p in (paths or []) if p and len(p) >= 2]
+    nodes: list = []
+    idx: dict = {}
+    for p in paths:
+        for n in p:
+            if n not in idx:
+                idx[n] = len(nodes)
+                nodes.append(n)
+    src, tgt, val, lcol = [], [], [], []
+    for i, p in enumerate(paths):
+        base = (path_colors[i] if path_colors and i < len(path_colors) else "#7F77DD")
+        for a, b in zip(p, p[1:]):
+            src.append(idx[a]); tgt.append(idx[b]); val.append(1)
+            lcol.append(_hex_to_rgba(base, 0.6))
+    fig = go.Figure(go.Sankey(
+        arrangement="snap",
+        node=dict(label=nodes, pad=18, thickness=16, color="#7F77DD",
+                  line=dict(color="rgba(255,255,255,0.4)", width=0.5)),
+        link=dict(source=src, target=tgt, value=val, color=lcol)))
+    fig.update_layout(height=height, margin=dict(l=8, r=8, t=8, b=8),
+                      paper_bgcolor="rgba(0,0,0,0)", font=dict(size=12, color="#e5e7eb"))
     return fig

@@ -22,7 +22,7 @@ import streamlit as st
 from unitgps.engine import determine_ghg_emissions, format_sig_figs
 
 from ..export import audit_to_json, audit_to_markdown
-from ..network_viz import GHG_PATH_COLORS, render_network_figure, render_network_plotly
+from ..network_viz import ghg_palette, render_network_figure, render_network_plotly, render_pathway_sankey
 from ..formatting import format_html_num, format_latex_num, normalize_param_value, sanitize_latex
 from .conversion import (
     STATIC_SETS,
@@ -105,6 +105,55 @@ def _render_horizontal_stacked_bar(
         f"margin-bottom:14px;'>"
         f"{''.join(legend_parts)}"
         f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_ghg_bar_plotly(
+    per_gas: dict, total_co2e: float, gas_colors: dict, theme: dict, target_unit: str
+) -> None:
+    """Interactive Plotly version of the stacked bar: hover a segment for the
+    exact CO2e and share. Falls back to the static bar if plotly is missing."""
+    if not total_co2e:
+        return
+    try:
+        import plotly.graph_objects as go
+    except ImportError:  # pragma: no cover
+        _render_horizontal_stacked_bar(per_gas, total_co2e, gas_colors, theme)
+        return
+
+    fig = go.Figure()
+    legend_parts = []
+    total_w = 0.0
+    for ghg in ("CO2", "CH4", "N2O"):
+        co2e = per_gas.get(ghg, {}).get("CO2e") or 0
+        pct = (co2e / total_co2e * 100) if total_co2e else 0
+        w = max(pct, 0.6)  # floor so tiny gases stay a visible sliver
+        total_w += w
+        fig.add_trace(go.Bar(
+            x=[w], y=["CO2e"], orientation="h", name=ghg,
+            marker=dict(color=gas_colors[ghg]),
+            customdata=[[co2e, pct]],
+            hovertemplate=(
+                "<b>" + ghg + "</b><br>%{customdata[0]:.4g} " + target_unit
+                + " CO2e<br>%{customdata[1]:.2f}% of total<extra></extra>"),
+        ))
+        legend_parts.append(
+            f"<span style='display:inline-flex;align-items:center;gap:6px;'>"
+            f"<span style='display:inline-block;width:10px;height:10px;border-radius:2px;"
+            f"background:{gas_colors[ghg]};'></span>"
+            f"<span style='color:{theme['text']} !important;font-weight:500;'>{ghg}</span>"
+            f"<span style='color:{theme['secondary']} !important;'>{pct:.2f}%</span></span>")
+    fig.update_layout(
+        barmode="stack", height=64, margin=dict(l=2, r=2, t=2, b=2),
+        xaxis=dict(visible=False, range=[0, total_w]),
+        yaxis=dict(visible=False), showlegend=False, bargap=0.1,
+        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown(
+        f"<div style='display:flex;gap:18px;flex-wrap:wrap;font-size:0.78rem;"
+        f"color:{theme['secondary']} !important;margin:-6px 0 14px 0;'>"
+        f"{''.join(legend_parts)}</div>",
         unsafe_allow_html=True,
     )
 
@@ -373,11 +422,9 @@ def render_emissions_panel(
                 res.get("valid_calc"),
             )
 
-            gas_colors = {
-                "CO2": theme["primary"],
-                "CH4": theme["success"],
-                "N2O": theme["danger"],
-            }
+            # CO2/CH4/N2O accents — one palette drives the bar, cards and network.
+            # Honors the Output-options "Colour-blind-safe" toggle.
+            gas_colors = ghg_palette(st.session_state.get("cb_safe", False))
 
             if not res["valid_calc"]:
                 st.warning("⚠️ Global calculation incomplete.")
@@ -397,10 +444,11 @@ def render_emissions_panel(
                 unsafe_allow_html=True,
             )
 
-            # ── Horizontal stacked bar + legend (replaces donut) ──
-            _render_horizontal_stacked_bar(
-                res["results"], total_co2e, gas_colors, theme
-            )
+            # ── Stacked bar — interactive (Plotly) or static (HTML) per toggle ──
+            if st.session_state.get("viz_mode", "Interactive") == "Interactive":
+                _render_ghg_bar_plotly(res["results"], total_co2e, gas_colors, theme, target_unit)
+            else:
+                _render_horizontal_stacked_bar(res["results"], total_co2e, gas_colors, theme)
 
             # ── Export buttons — JSON audit + Markdown report ──
             json_blob = audit_to_json(
@@ -510,21 +558,21 @@ def render_emissions_panel(
                     chosen = path_raw
                 if chosen and isinstance(chosen, list) and isinstance(chosen[0], str):
                     ghg_paths.append(chosen)
-                    ghg_path_colors.append(GHG_PATH_COLORS.get(ghg, theme.get("primary", "#888")))
+                    ghg_path_colors.append(gas_colors.get(ghg, theme.get("primary", "#888")))
             if ghg_paths:
-                with st.expander("🌐 Show GHG network view", expanded=False):
-                    st.caption(
-                        "All three gas pathways overlaid on the full conversion "
-                        "graph. CO₂ in violet, CH₄ in green, N₂O in red — the "
-                        "same accents used in the bar and per-gas cards above."
-                    )
-                    _viz_mode = st.session_state.get("viz_mode", "Interactive")
+                _graph_viz = st.session_state.get("graph_viz", "Network")
+                _viz_mode = st.session_state.get("viz_mode", "Interactive")
+                with st.expander(f"🌐 Show GHG {_graph_viz.lower()} view", expanded=False):
                     try:
-                        if _viz_mode == "Interactive":
-                            fig = render_network_plotly(
-                                graph_engine, highlight_paths=ghg_paths, path_colors=ghg_path_colors,
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
+                        if _graph_viz == "Sankey":
+                            st.plotly_chart(
+                                render_pathway_sankey(ghg_paths, path_colors=ghg_path_colors),
+                                use_container_width=True)
+                        elif _viz_mode == "Interactive":
+                            st.plotly_chart(
+                                render_network_plotly(graph_engine, highlight_paths=ghg_paths,
+                                                      path_colors=ghg_path_colors),
+                                use_container_width=True)
                         else:
                             import matplotlib.pyplot as plt
                             fig = render_network_figure(
@@ -534,4 +582,4 @@ def render_emissions_panel(
                             st.pyplot(fig, use_container_width=True)
                             plt.close(fig)
                     except Exception as exc:  # noqa: BLE001
-                        st.warning(f"Network view unavailable: {exc}")
+                        st.warning(f"Diagram unavailable: {exc}")

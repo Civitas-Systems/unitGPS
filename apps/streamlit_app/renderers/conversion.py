@@ -10,7 +10,7 @@ from unitgps.engine import determine_conversion, format_sig_figs
 
 from ..export import audit_to_json, audit_to_markdown
 from ..formatting import format_audit_date, normalize_param_value
-from ..network_viz import render_network_figure, render_network_plotly
+from ..network_viz import render_network_figure, render_network_plotly, render_pathway_sankey
 from .stepper import render_hero_stepper
 
 logger = logging.getLogger(__name__)
@@ -589,17 +589,16 @@ def _render_single_path(
     # Default closed so the panel stays compact; users can open when they want
     # to see the path in the context of the whole unit graph.
     if graph_engine is not None and data.get("route"):
-        with st.expander("🌐 Show network view", expanded=False):
-            st.caption(
-                "The full conversion graph, with this path highlighted in the "
-                "Path 1 color. Each dimension (Energy, Weight, Length, etc.) "
-                "is a cluster; the path you ran is overlaid in bold."
-            )
-            _viz_mode = st.session_state.get("viz_mode", "Interactive")
+        _graph_viz = st.session_state.get("graph_viz", "Network")
+        _viz_mode = st.session_state.get("viz_mode", "Interactive")
+        with st.expander(f"🌐 Show {_graph_viz.lower()} view", expanded=False):
             try:
-                if _viz_mode == "Interactive":
-                    fig = render_network_plotly(graph_engine, highlight_paths=[data["route"]])
-                    st.plotly_chart(fig, use_container_width=True)
+                if _graph_viz == "Sankey":
+                    st.plotly_chart(render_pathway_sankey([data["route"]]), use_container_width=True)
+                elif _viz_mode == "Interactive":
+                    st.plotly_chart(
+                        render_network_plotly(graph_engine, highlight_paths=[data["route"]]),
+                        use_container_width=True)
                 else:
                     import matplotlib.pyplot as plt
                     fig = render_network_figure(
@@ -608,7 +607,7 @@ def _render_single_path(
                     st.pyplot(fig, use_container_width=True)
                     plt.close(fig)
             except Exception as exc:  # noqa: BLE001
-                st.warning(f"Network view unavailable: {exc}")
+                st.warning(f"Diagram unavailable: {exc}")
 
 
 def render_conversion_panel(
